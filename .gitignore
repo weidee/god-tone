@@ -1,0 +1,51 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment
+.env
+.env.local
+*.env
+agx/config.py
+esp32/config.h
+raspberry-pi/config.py
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# AGX model artifacts
+agx/models/*.pt
+agx/models/*.onnx
+agx/models/*.engine
+
+# Build outputs
+dist/
+build/
+coverage/
+
+# macOS
+.DS_Store
+
+# Logs
+logs/
+*.log
+
+# Nested independent repository
+repo-b-speckit/
+
+# Runtime database artifacts
+*.db
+*.db-shm
+*.db-wal
+
+# Runtime/temp artifacts
+.runtime/
+tmp/
+temp/
+*.tmp
