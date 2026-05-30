@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request
 
 import config
-import skill
+import task_control
 import yolo_infer
 
 
@@ -12,25 +12,6 @@ yolo_model = yolo_infer.load_model(config.YOLO_MODEL_PATH)
 @app.get("/ping")
 def ping():
     return jsonify({"status": "ok", "yolo": "loaded"})
-
-
-@app.post("/classify")
-def classify():
-    try:
-        data = request.get_json(silent=True) or {}
-        if not isinstance(data, dict):
-            raise ValueError("JSON body must be an object")
-
-        text = data.get("text")
-        if not isinstance(text, str) or not text.strip():
-            raise ValueError("text is required")
-
-        result = skill.run_skill_voice(text.strip())
-        return jsonify(result)
-    except ValueError as exc:
-        return jsonify({"error": str(exc)}), 422
-    except Exception as exc:
-        return jsonify({"error": str(exc)}), 500
 
 
 @app.post("/detect")
@@ -46,16 +27,9 @@ def detect():
 
         result = yolo_infer.infer(yolo_model, image_bytes)
         if result["label"] is None:
-            return jsonify(
-                {
-                    "bin": None,
-                    "label": None,
-                    "message": "未偵測到垃圾",
-                    "confidence": None,
-                }
-            )
+            return jsonify(task_control.empty_result())
 
-        final_result = skill.run_skill_vision(result["label"], result["confidence"])
+        final_result = task_control.build_result(result)
         return jsonify(final_result)
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 422

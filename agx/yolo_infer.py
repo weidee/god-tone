@@ -32,8 +32,24 @@ def infer(model: Any, image_bytes: bytes) -> dict:
     class_id = int(boxes.cls[best_index].item())
     confidence = float(boxes.conf[best_index].item())
     class_name = _class_name(model.names, class_id)
+    x1, y1, x2, y2 = [float(value) for value in boxes.xyxy[best_index].tolist()]
+    center_x = (x1 + x2) / 2
+    center_y = (y1 + y2) / 2
 
-    return {"label": class_name, "confidence": confidence}
+    return {
+        "label": class_name,
+        "confidence": confidence,
+        "bbox": {
+            "x1": x1,
+            "y1": y1,
+            "x2": x2,
+            "y2": y2,
+        },
+        "center": {
+            "x": center_x,
+            "y": center_y,
+        },
+    }
 
 
 def _class_name(names: Any, class_id: int) -> str:

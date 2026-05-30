@@ -1,182 +1,32 @@
-# Smart Trash Sorting System
+# ESP32 + ArmPi 智慧垃圾分類系統
 
-智慧垃圾分類系統是一個期末專題型的 IoT + AI 專案。系統由 ESP32、Raspberry Pi、NVIDIA AGX 三個模組組成，透過 HTTP 在同一個區域網路內互相通訊，完成語音指令分類或影像自動辨識，最後控制機械手臂將垃圾放入對應桶位。
+本專題使用 ESP32 觸發任務，Raspberry Pi 拍照並呼叫 ROS 節點控制機械手臂，NVIDIA AGX 執行 YOLOv8 影像辨識與任務控制指令產生，完成垃圾分類展示流程。
 
-目前此 repository 先完成 AGX Skill Server MVP。ESP32 與 Raspberry Pi 目錄已建立，但尚未實作。
-
-## System Goal
-
-系統支援兩種使用情境：
-
-- 語音路徑：使用者透過 ESP32 說出垃圾種類，AGX 判斷分類並回傳播報文字。
-- 影像路徑：Raspberry Pi 拍照送到 AGX，AGX 使用 YOLOv8 偵測物品並決策分類。
-- 執行路徑：AGX 將分類結果轉成 bin 指令，送給 Raspberry Pi 控制手臂。
-
-目前支援的垃圾類別：
-
-| 物品 | Label | Bin |
-| --- | --- | --- |
-| 衛生紙 | `tissue` | `bin_a` |
-| 紙盒 | `paper_box` | `bin_b` |
-| 塑膠罐 | `plastic_can` | `bin_c` |
-
-## Module Responsibilities
-
-| 模組 | 主要硬體 | 負責人 | 核心職責 | 狀態 |
-| --- | --- | --- | --- | --- |
-| ESP32 voice module | ESP32、麥克風、喇叭 | 隊友 A | 喚醒詞、錄音、STT、呼叫 AGX `/classify`、播放 AGX 回傳訊息 | 目錄已建立，尚未實作 |
-| Raspberry Pi camera and arm module | Raspberry Pi、Camera、伺服馬達 | 隊友 B | 拍照、呼叫 AGX `/detect`、接收 AGX `/move` 指令、控制手臂 | 目錄已建立，尚未實作 |
-| AGX Skill Server module | NVIDIA AGX | 韋傑 | Flask API、YOLOv8 推論、OpenAI Skill flow、分類決策、發送 `/move` 指令 | MVP 已實作 |
-
-## Detailed Work Breakdown
-
-### ESP32 Voice Module
-
-ESP32 負責使用者互動，不做分類決策。
-
-主要工作：
-
-- 偵測喚醒詞或按鍵觸發錄音。
-- 使用麥克風擷取語音。
-- 將語音轉成文字，或串接 STT API 取得文字。
-- 呼叫 AGX `POST /classify`，送出 `{"text": "這是紙盒"}`。
-- 讀取 AGX 回傳的 `message` 欄位並用喇叭播放。
-- 管理 WiFi、AGX IP、API key 等本機設定。
-
-交付內容：
-
-- `esp32/main.ino`
-- `esp32/wake_word.ino`
-- `esp32/stt.ino`
-- `esp32/http_client.ino`
-- `esp32/tts.ino`
-- `esp32/config.h`，此檔不可提交真實密鑰
-
-### Raspberry Pi Camera And Arm Module
-
-Raspberry Pi 負責影像來源與實體動作，不做 AI 決策。
-
-主要工作：
-
-- 定期或按需拍照。
-- 將 jpg/png 圖片用 multipart form-data 呼叫 AGX `POST /detect`。
-- 提供 `POST /move` endpoint，接收 AGX 傳來的 `{"bin": "bin_b"}`。
-- 將 `bin_a`、`bin_b`、`bin_c` 對應到實際伺服馬達角度。
-- 控制手臂或分流機構移動到指定桶位。
-- 在 AGX 無回應時記錄錯誤並繼續下一輪拍照。
-
-交付內容：
-
-- `raspberry-pi/server.py`
-- `raspberry-pi/camera.py`
-- `raspberry-pi/arm_control.py`
-- `raspberry-pi/config.example.py`
-- `raspberry-pi/requirements.txt`
-
-### AGX Skill Server Module
-
-AGX 是目前已實作的 AI 決策核心。
-
-主要工作：
-
-- 提供 Flask server。
-- 接收 ESP32 的 `POST /classify` JSON 文字請求。
-- 接收 Raspberry Pi 的 `POST /detect` 圖片請求。
-- 載入 YOLOv8 模型並做物件偵測。
-- 透過 OpenAI Skill flow 將語音或影像結果確認成最終 label。
-- 將 label 對應成 bin 與中文訊息。
-- 呼叫 Raspberry Pi `POST /move` 發送手臂動作指令。
-- 回傳統一 JSON 給呼叫方。
-
-交付內容：
-
-- `agx/server.py`
-- `agx/skill.py`
-- `agx/yolo_infer.py`
-- `agx/config.example.py`
-- `agx/requirements.txt`
-- `agx/README.md`
-- `agx/models/.gitkeep`
-
-## System Flow
-
-### Voice Flow
+目前專案採用三個模組分工，避免過度拆層：
 
 ```text
-User voice
-  -> ESP32 records audio
-  -> ESP32 gets text from STT
-  -> ESP32 POST /classify to AGX
-  -> AGX asks LLM for final class
-  -> AGX POST /move to Raspberry Pi
-  -> Raspberry Pi moves arm
-  -> AGX returns message to ESP32
-  -> ESP32 speaks message
+ESP32 觸發任務
+  -> Raspberry Pi 拍照
+  -> Raspberry Pi 將圖片上傳到 AGX /detect
+  -> AGX 執行 YOLOv8 推論
+  -> AGX 取得類別、邊界框、信心值、中心座標
+  -> AGX 任務控制模組計算工作區座標
+  -> AGX 任務控制模組產生控制指令
+  -> AGX 將控制指令回傳給 Raspberry Pi
+  -> Raspberry Pi 呼叫 ROS 節點控制機械手臂
+  -> Raspberry Pi 回到等待下一張影像
 ```
 
-### Vision Flow
-
-```text
-Raspberry Pi camera captures image
-  -> Raspberry Pi POST /detect to AGX
-  -> AGX runs YOLOv8 inference
-  -> AGX asks LLM to confirm final class
-  -> AGX POST /move to Raspberry Pi
-  -> Raspberry Pi moves arm
-  -> AGX returns detection result
-```
-
-## API Contract
-
-### AGX Endpoints
-
-| Endpoint | Method | Caller | Purpose |
-| --- | --- | --- | --- |
-| `/ping` | GET | Any module | Health check |
-| `/classify` | POST | ESP32 | Classify voice text |
-| `/detect` | POST | Raspberry Pi | Detect trash from image |
-
-Example `POST /classify` request:
-
-```json
-{"text": "這是紙盒"}
-```
-
-Example AGX response:
-
-```json
-{
-  "bin": "bin_b",
-  "label": "paper_box",
-  "message": "已將紙盒放入紙類回收桶",
-  "confidence": null
-}
-```
-
-### Raspberry Pi Endpoint
-
-| Endpoint | Method | Caller | Purpose |
-| --- | --- | --- | --- |
-| `/move` | POST | AGX | Move arm to target bin |
-
-Example `POST /move` request:
-
-```json
-{"bin": "bin_b"}
-```
-
-## Repository Structure
+## 專案結構
 
 ```text
 .
-├── AGENTS.md
 ├── README.md
-├── docs/
-│   ├── agx_spec.md
-│   └── system_overview.md
+├── AGENTS.md
+├── CLAUDE.md
 ├── agx/
 │   ├── server.py
-│   ├── skill.py
+│   ├── task_control.py
 │   ├── yolo_infer.py
 │   ├── config.example.py
 │   ├── requirements.txt
@@ -185,43 +35,246 @@ Example `POST /move` request:
 │       └── .gitkeep
 ├── esp32/
 │   └── .gitkeep
-└── raspberry-pi/
+├── raspberry-pi/
+│   ├── server.py
+│   ├── run_once.py
+│   ├── camera.py
+│   ├── agx_client.py
+│   ├── ros_control.py
+│   ├── config.example.py
+│   ├── requirements.txt
+│   └── README.md
+└── datasets/
+    ├── README.md
+    └── raw/
+```
+
+## 模組分工
+
+| 模組 | 硬體 | 職責 | 狀態 |
+| --- | --- | --- | --- |
+| `esp32/` | ESP32、按鈕、麥克風或喇叭 | 觸發系統開始任務，細節由 ESP32 組員決定 | 尚未實作 |
+| `raspberry-pi/` | Raspberry Pi、Camera、ROS、機械手臂 | 拍照、呼叫 AGX `/detect`、接收控制指令、呼叫 ROS 節點控制機械手臂 | Mock MVP 已實作 |
+| `agx/` | NVIDIA AGX | Flask API、YOLO 推論、座標轉換、任務控制指令產生 | MVP 已更新 |
+| `datasets/` | 本機資料夾 | 訓練與標註資料 | 本機使用 |
+
+## AI 工具入口
+
+不同 AI coding 工具請先閱讀以下檔案，避免讀到不同版本的規格：
+
+| 工具 | 入口檔 |
+| --- | --- |
+| Codex | `AGENTS.md` |
+| Claude | `CLAUDE.md` |
+| OpenCode | `AGENTS.md` |
+
+專案規格以 `README.md` 為主，AI 開發規則以 `AGENTS.md` 為主。`CLAUDE.md` 只作為入口提示，不另外維護一份規格。
+
+## 模組邊界
+
+- ESP32 只負責觸發系統，AGX 不假設 ESP32 的實作方式。
+- Raspberry Pi 負責拍照、上傳圖片、接收 AGX 控制指令，以及呼叫 ROS 節點控制機械手臂。
+- AGX 負責 YOLO 推論、整理偵測結果、計算工作區座標、產生控制指令。
+- AGX 不直接控制 ROS，也不直接操作機械手臂。
+- 模組之間使用 HTTP API 溝通，不共用本機程式碼。
+
+## 支援分類
+
+| 垃圾 | Label | Bin | 回傳訊息 |
+| --- | --- | --- | --- |
+| 衛生紙 | `tissue` | `bin_a` | `已產生衛生紙分類控制指令` |
+| 鋁箔包 | `foil_pack` | `bin_b` | `已產生鋁箔包分類控制指令` |
+| 塑膠瓶 | `plastic_bottle` | `bin_c` | `已產生塑膠瓶分類控制指令` |
+
+## API 合約
+
+### AGX `GET /ping`
+
+成功回應 `200`：
+
+```json
+{"status": "ok", "yolo": "loaded"}
+```
+
+### AGX `POST /detect`
+
+請求格式為 `multipart/form-data`：
+
+| Key | Value |
+| --- | --- |
+| `image` | jpg 或 png 圖片 |
+
+成功回應 `200`：
+
+```json
+{
+  "label": "plastic_bottle",
+  "bin": "bin_c",
+  "message": "已產生塑膠瓶分類控制指令",
+  "confidence": 0.91,
+  "detection": {
+    "bbox": {
+      "x1": 120,
+      "y1": 80,
+      "x2": 260,
+      "y2": 220
+    },
+    "center": {
+      "x": 190,
+      "y": 150
+    }
+  },
+  "workspace": {
+    "x": 0.23,
+    "y": -0.08,
+    "z": 0.02
+  },
+  "command": {
+    "action": "pick_and_place",
+    "target_bin": "bin_c",
+    "pick": {
+      "x": 0.23,
+      "y": -0.08,
+      "z": 0.02
+    }
+  }
+}
+```
+
+沒有偵測到垃圾時回應 `200`：
+
+```json
+{"bin": null, "label": null, "message": "未偵測到垃圾", "confidence": null, "detection": null, "workspace": null, "command": null}
+```
+
+`ValueError` 回應 `422`，其他例外回應 `500`。
+
+### Raspberry Pi ROS 控制
+
+AGX 不直接呼叫 ROS，也不直接控制機械手臂。Raspberry Pi 收到 AGX 回傳的 `command` 後，負責呼叫自己的 ROS 節點。
+
+Raspberry Pi 端可以依照自己的 ROS service/action/topic 設計轉換 `command`。AGX 只保證回傳 JSON 控制指令，不假設 Raspberry Pi 內部 ROS 實作。
+
+### Raspberry Pi `POST /trigger`
+
+目前 Raspberry Pi 端提供測試用觸發 endpoint。ESP32 的實際觸發方式還不確定，因此此 endpoint 先作為本機測試與整合測試入口。
+
+成功流程：
+
+```text
+POST /trigger
+  -> camera.capture_image()
+  -> agx_client.detect()
+  -> ros_control.execute_command()
+  -> 回傳 AGX 結果與 ROS 執行狀態
+```
+
+成功回應 `200`：
+
+```json
+{
+  "status": "done",
+  "agx": {
+    "label": "plastic_bottle",
+    "bin": "bin_c",
+    "command": {
+      "action": "pick_and_place",
+      "target_bin": "bin_c",
+      "pick": {
+        "x": 0.23,
+        "y": -0.08,
+        "z": 0.02
+      }
+    }
+  },
+  "ros": {
+    "executed": true,
+    "mode": "mock"
+  }
+}
+```
+
+## AGX 任務控制設計
+
+AGX `POST /detect` 內部流程：
+
+```text
+接收圖片
+  -> YOLOv8 推論
+  -> 選擇最高信心值偵測結果
+  -> 輸出 label、bbox、confidence、center
+  -> 將影像中心座標轉換成工作區座標
+  -> 依照 label 對應 bin
+  -> 產生 pick_and_place 控制指令
+  -> 回傳 JSON 給 Raspberry Pi
+```
+
+AGX 建議模組：
+
+```text
+agx/
+├── server.py        # Flask API、錯誤回應
+├── yolo_infer.py    # YOLO 模型載入與推論
+├── task_control.py  # 工作區座標計算、控制指令產生
+├── config.example.py
+├── requirements.txt
+├── README.md
+└── models/
     └── .gitkeep
 ```
 
-## Development Notes
+`task_control.py` 不控制硬體，只產生 Raspberry Pi 可使用的 JSON 指令。
 
-- Do not commit real API keys or local config files.
-- Do not commit `agx/config.py`.
-- Do not commit `esp32/config.h` if it contains WiFi credentials or API keys.
-- Do not commit `raspberry-pi/config.py`.
-- Do not commit YOLO model artifacts such as `agx/models/best.pt`.
-- Keep module boundaries clear: ESP32 handles voice, Raspberry Pi handles camera/arm, AGX handles AI decision logic.
+## AGX 設定
 
-## AGX Quick Start
+倉庫只保留 `agx/config.example.py`。本機執行時，請複製成不提交的 `agx/config.py`。
 
-```bash
-cd agx
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-cp config.example.py config.py
+必要設定：
+
+```python
+YOLO_MODEL_PATH = "models/best.pt"
+YOLO_CONF = 0.5
+YOLO_DEVICE = "cuda"
+
+FLASK_PORT = 8000
+
+CLASS_NAMES = ["tissue", "foil_pack", "plastic_bottle"]
+
+BIN_MAP = {
+    "tissue": "bin_a",
+    "foil_pack": "bin_b",
+    "plastic_bottle": "bin_c",
+}
+
+MESSAGE_MAP = {
+    "tissue": "已產生衛生紙分類控制指令",
+    "foil_pack": "已產生鋁箔包分類控制指令",
+    "plastic_bottle": "已產生塑膠瓶分類控制指令",
+}
+
+WORKSPACE_Z = 0.02
+
+IMAGE_TO_WORKSPACE = {
+    "scale_x": 0.001,
+    "scale_y": 0.001,
+    "offset_x": 0.0,
+    "offset_y": 0.0,
+}
 ```
 
-Edit `agx/config.py`, then manually place the YOLO model at:
+## 模組啟動
 
-```text
-agx/models/best.pt
-```
+各模組的安裝與執行方式放在模組自己的 README：
 
-Run AGX server:
+- [AGX 啟動方式](agx/README.md)
+- [Raspberry Pi 啟動方式](raspberry-pi/README.md)
 
-```bash
-python server.py
-```
+## 開發注意事項
 
-Test health check:
-
-```bash
-curl http://localhost:8000/ping
-```
+- 專案維持三個硬體/系統模組：`esp32/`、`raspberry-pi/`、`agx/`。
+- 除非專題範圍改變，不要重新加入舊的 web/backend/worker 架構。
+- 不要提交真實 API key、WiFi 密碼、本機設定檔、YOLO 權重或原始資料集。
+- 不要提交 `agx/config.py`、`esp32/config.h`、`raspberry-pi/config.py`、`agx/models/best.pt`。
+- AGX 只回傳控制指令；Raspberry Pi / ROS 端如何執行指令，由 Raspberry Pi 組員實作。
+- Raspberry Pi 目前用 mock camera 和 mock ROS；接硬體時只替換 `camera.py` 與 `ros_control.py` 的實作。
+- 原始標註資料放在 `datasets/raw/`，並由 git 忽略。

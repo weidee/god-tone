@@ -9,6 +9,7 @@ pnpm-debug.log*
 .env
 .env.local
 *.env
+AGENTS.md
 agx/config.py
 esp32/config.h
 raspberry-pi/config.py
@@ -23,6 +24,10 @@ venv/
 agx/models/*.pt
 agx/models/*.onnx
 agx/models/*.engine
+
+# Local datasets
+datasets/raw/
+datasets/processed/
 
 # Build outputs
 dist/

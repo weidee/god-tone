@@ -1,14 +1,32 @@
-# AGX Skill Server
+# AGX AI Server
 
-AGX is the AI decision server for the smart trash sorting system. It receives voice text from ESP32, receives images from Raspberry Pi, runs YOLOv8 inference for image input, asks the Skill flow for the final class, and sends bin movement commands to Raspberry Pi.
+AGX 是本專題的 AI server，負責接收 Raspberry Pi 上傳的圖片、執行 YOLOv8 推論、計算工作區座標，並產生 Raspberry Pi 可用的控制指令。
 
-## Directory Structure
+AGX 不直接控制 ROS，也不直接操作機械手臂。Raspberry Pi 收到 AGX 回傳的 `command` 後，負責呼叫自己的 ROS 節點。
+
+## 流程摘要
+
+```text
+Raspberry Pi 拍照
+  -> 上傳影像給 AGX /detect
+  -> Flask API 執行 YOLOv8 推論
+  -> YOLO 輸出類別、邊界框、信心值、中心座標
+  -> AGX 任務控制模組計算工作區座標
+  -> AGX 任務控制模組產生控制指令
+  -> AGX 將控制指令回傳給 Raspberry Pi
+  -> Raspberry Pi 呼叫 ROS 節點控制機械手臂
+  -> Raspberry Pi 回到等待下一張影像
+```
+
+完整系統流程與 API 合約請看根目錄 [README.md](../README.md)。
+
+## 檔案結構
 
 ```text
 agx/
-├── server.py
-├── skill.py
-├── yolo_infer.py
+├── server.py        # Flask API、錯誤回應
+├── yolo_infer.py    # YOLO 模型載入與推論
+├── task_control.py  # 工作區座標計算、控制指令產生
 ├── config.example.py
 ├── requirements.txt
 ├── README.md
@@ -16,9 +34,17 @@ agx/
     └── .gitkeep
 ```
 
-## Setup
+## 支援分類
 
-Run commands from the `agx/` directory unless noted otherwise.
+- `tissue`
+- `foil_pack`
+- `plastic_bottle`
+
+分類、bin 對應與回傳格式以根目錄 [README.md](../README.md) 為準。
+
+## 安裝
+
+從 `agx/` 目錄執行：
 
 ```bash
 cd agx
@@ -27,71 +53,56 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Create local config:
+建立本機設定：
 
 ```bash
 cp config.example.py config.py
 ```
 
-Edit `config.py` and fill in:
+編輯 `config.py`：
 
-- `OPENAI_API_KEY`
-- `RPI_URL`
-- YOLO settings if your model path, confidence threshold, or device differs
+- `YOLO_MODEL_PATH`
+- `YOLO_CONF`
+- `YOLO_DEVICE`
+- 工作區座標轉換參數
 
-If the AGX device does not have CUDA ready yet, set `YOLO_DEVICE = "cpu"` for local testing.
+如果 AGX 還沒有 CUDA 環境，可以先設定 `YOLO_DEVICE = "cpu"` 測試。
 
-Place the YOLO model manually at:
+手動放入 YOLO 模型：
 
 ```text
 agx/models/best.pt
 ```
 
-Do not commit `config.py` or `models/best.pt`.
+不要提交 `config.py` 或 `models/best.pt`。
 
-## Run
+## 執行
 
 ```bash
 python server.py
 ```
 
-The server listens on `0.0.0.0` and `config.FLASK_PORT`.
+server 監聽 `0.0.0.0` 與 `config.FLASK_PORT`。
 
-## Test
+## 測試
 
-Ping:
+健康檢查：
 
 ```bash
 curl http://localhost:8000/ping
 ```
 
-Voice classification:
-
-```bash
-curl -X POST http://localhost:8000/classify \
-  -H "Content-Type: application/json" \
-  -d '{"text": "這是紙盒"}'
-```
-
-Image detection:
+圖片偵測：
 
 ```bash
 curl -X POST http://localhost:8000/detect \
   -F "image=@/path/to/image.jpg"
 ```
 
-## Notes
+## 注意事項
 
-- `server.py` handles Flask routes and error responses.
-- `skill.py` handles prompts, OpenAI calls, class parsing, and Raspberry Pi `/move` dispatch.
-- `yolo_infer.py` handles YOLO model loading and inference.
-- YOLO image input is converted to RGB before inference.
-- YOLO class names should match `CLASS_NAMES` in `config.py`.
-- `ValueError` returns HTTP 422.
-- Other exceptions return HTTP 500.
-
-## Common Issues
-
-- `ModuleNotFoundError: No module named 'config'`: copy `config.example.py` to `config.py` inside `agx/`.
-- Model load failure: confirm `agx/models/best.pt` exists and run `python server.py` from `agx/`.
-- Raspberry Pi move failure: AGX still returns the classification result and prints a warning log.
+- `server.py` 只處理 Flask routes 與錯誤回應。
+- `yolo_infer.py` 只處理 YOLO 模型載入與推論。
+- `task_control.py` 只處理座標轉換與控制指令產生。
+- `ValueError` 回傳 HTTP 422。
+- 其他例外回傳 HTTP 500。
