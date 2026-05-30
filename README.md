@@ -56,6 +56,18 @@ ESP32 觸發任務
 | `agx/` | NVIDIA AGX | Flask API、YOLO 推論、座標轉換、任務控制指令產生 | MVP 已更新 |
 | `datasets/` | 本機資料夾 | 訓練與標註資料 | 本機使用 |
 
+## AI 工具入口
+
+不同 AI coding 工具請先閱讀以下檔案，避免讀到不同版本的規格：
+
+| 工具 | 入口檔 |
+| --- | --- |
+| Codex | `AGENTS.md` |
+| Claude | `CLAUDE.md` |
+| OpenCode | `AGENTS.md` |
+
+專案規格以 `README.md` 為主，AI 開發規則以 `AGENTS.md` 為主。`CLAUDE.md` 只作為入口提示，不另外維護一份規格。
+
 ## 模組邊界
 
 - ESP32 只負責觸發系統，AGX 不假設 ESP32 的實作方式。
