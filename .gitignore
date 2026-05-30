@@ -10,6 +10,7 @@ pnpm-debug.log*
 .env.local
 *.env
 AGENTS.md
+CLAUDE.md
 agx/config.py
 esp32/config.h
 raspberry-pi/config.py

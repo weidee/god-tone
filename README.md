@@ -22,8 +22,6 @@ ESP32 觸發任務
 ```text
 .
 ├── README.md
-├── AGENTS.md
-├── CLAUDE.md
 ├── agx/
 │   ├── server.py
 │   ├── task_control.py
@@ -57,18 +55,6 @@ ESP32 觸發任務
 | `raspberry-pi/` | Raspberry Pi、Camera、ROS、機械手臂 | 拍照、呼叫 AGX `/detect`、接收控制指令、呼叫 ROS 節點控制機械手臂 | Mock MVP 已實作 |
 | `agx/` | NVIDIA AGX | Flask API、YOLO 推論、座標轉換、任務控制指令產生 | MVP 已更新 |
 | `datasets/` | 本機資料夾 | 訓練與標註資料 | 本機使用 |
-
-## AI 工具入口
-
-不同 AI coding 工具請先閱讀以下檔案，避免讀到不同版本的規格：
-
-| 工具 | 入口檔 |
-| --- | --- |
-| Codex | `AGENTS.md` |
-| Claude | `CLAUDE.md` |
-| OpenCode | `AGENTS.md` |
-
-專案規格以 `README.md` 為主，AI 開發規則以 `AGENTS.md` 為主。`CLAUDE.md` 只作為入口提示，不另外維護一份規格。
 
 ## 模組邊界
 
