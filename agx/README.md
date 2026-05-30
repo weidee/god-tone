@@ -29,6 +29,7 @@ agx/
 ├── task_control.py  # 工作區座標計算、控制指令產生
 ├── config.example.py
 ├── requirements.txt
+├── smoke_test.py
 ├── README.md
 └── models/
     └── .gitkeep
@@ -64,9 +65,24 @@ cp config.example.py config.py
 - `YOLO_MODEL_PATH`
 - `YOLO_CONF`
 - `YOLO_DEVICE`
+- `YOLO_INFER_MODE`
 - 工作區座標轉換參數
 
-如果 AGX 還沒有 CUDA 環境，可以先設定 `YOLO_DEVICE = "cpu"` 測試。
+如果還沒有 YOLO 模型或 CUDA 環境，可以先保留：
+
+```python
+YOLO_INFER_MODE = "mock"
+```
+
+mock 模式仍會檢查上傳圖片是否可讀，並回傳固定的模擬偵測結果，方便先測 API 與 Raspberry Pi 呼叫流程。
+
+準備好 YOLO 模型後，再改成：
+
+```python
+YOLO_INFER_MODE = "yolo"
+```
+
+如果沒有 CUDA，可以先設定 `YOLO_DEVICE = "cpu"` 測試。
 
 手動放入 YOLO 模型：
 
@@ -85,6 +101,12 @@ python server.py
 server 監聽 `0.0.0.0` 與 `config.FLASK_PORT`。
 
 ## 測試
+
+mock 模式 smoke test：
+
+```bash
+python smoke_test.py
+```
 
 健康檢查：
 

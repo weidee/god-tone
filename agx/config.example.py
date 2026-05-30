@@ -1,6 +1,7 @@
 YOLO_MODEL_PATH = "models/best.pt"
 YOLO_CONF = 0.5
 YOLO_DEVICE = "cuda"
+YOLO_INFER_MODE = "mock"
 
 FLASK_PORT = 8000
 
@@ -25,4 +26,15 @@ IMAGE_TO_WORKSPACE = {
     "scale_y": 0.001,
     "offset_x": 0.0,
     "offset_y": 0.0,
+}
+
+MOCK_DETECTION = {
+    "label": "plastic_bottle",
+    "confidence": 0.91,
+    "bbox_ratio": {
+        "x1": 0.3,
+        "y1": 0.25,
+        "x2": 0.7,
+        "y2": 0.75,
+    },
 }
