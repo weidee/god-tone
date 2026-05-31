@@ -14,12 +14,16 @@ ROS_COMMAND_TOPIC = "/trash_sorting/command"
 REQUEST_TIMEOUT = 10
 
 COMMAND_ACTION = "pick_and_place"
-TARGET_BINS = ["bin_a", "bin_b", "bin_c"]
 
+PICK_POINTS = {
+    "left": {"x": 0.18, "y": 0.08, "z": 0.02},
+    "middle": {"x": 0.23, "y": 0.00, "z": 0.02},
+    "right": {"x": 0.18, "y": -0.08, "z": 0.02},
+}
+BIN_POINTS = {
+    "bin_a": {"x": 0.30, "y": 0.16, "z": 0.05},
+    "bin_b": {"x": 0.32, "y": 0.00, "z": 0.05},
+    "bin_c": {"x": 0.30, "y": -0.16, "z": 0.05},
+}
 SAFE_Z = 0.12
 HOME_POSITION = {"x": 0.0, "y": 0.0, "z": 0.15}
-BIN_POSITIONS = {
-    "bin_a": {"x": 0.12, "y": 0.18, "z": 0.05},
-    "bin_b": {"x": 0.22, "y": 0.18, "z": 0.05},
-    "bin_c": {"x": 0.32, "y": 0.18, "z": 0.05},
-}

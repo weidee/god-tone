@@ -1,6 +1,6 @@
-# ESP32 + ArmPi 智慧垃圾分類系統
+# ESP32 + ArmPi-FPV 智慧垃圾分類系統
 
-本專題使用 ESP32 觸發任務，Raspberry Pi 拍照並呼叫 ROS 節點控制機械手臂，AGX 執行 YOLOv8 影像辨識與任務控制指令產生，完成垃圾分類展示流程。
+本專題使用 ESP32 觸發任務，Raspberry Pi / ArmPi-FPV 負責拍照與機械手臂控制，AGX 負責 YOLOv8 影像辨識與高階任務指令產生。系統透過 HTTP API 串接各模組，AGX 回傳 JSON command 給 Raspberry Pi，Raspberry Pi 再將 command 轉換成 ArmPi-FPV motion_plan，並透過 ROS 或 ArmPi Python 控制機械手臂完成垃圾夾取與分類。
 
 AGX 模組放在 `agx/` 目錄。若暫時使用一般電腦執行推論服務，文件與程式仍一律稱為 AGX。若尚未取得 AGX、YOLO 模型、Camera 或機械手臂，可先使用 mock 模式完成 API 與流程整合。
 
@@ -8,15 +8,19 @@ AGX 模組放在 `agx/` 目錄。若暫時使用一般電腦執行推論服務�
 
 ```text
 ESP32 觸發任務
+  -> Raspberry Pi / ArmPi-FPV 接收觸發
   -> Raspberry Pi 拍照
   -> Raspberry Pi 將圖片上傳到 AGX /detect
   -> AGX 執行 YOLOv8 推論
   -> AGX 取得類別、邊界框、信心值、中心座標
-  -> AGX 任務控制模組計算工作區座標
-  -> AGX 任務控制模組產生控制指令
-  -> AGX 將控制指令回傳給 Raspberry Pi
-  -> Raspberry Pi 呼叫 ROS 節點控制機械手臂
-  -> Raspberry Pi 回到等待下一張影像
+  -> AGX 依照類別對應 target_bin
+  -> AGX 依照中心座標產生 pick_zone 或 workspace_candidate
+  -> AGX 產生 high-level command
+  -> AGX 將 command 回傳給 Raspberry Pi
+  -> Raspberry Pi 驗證 command
+  -> Raspberry Pi 將 command 轉成 ArmPi-FPV motion_plan
+  -> Raspberry Pi 呼叫 ROS / ArmPi Python 控制機械手臂
+  -> Raspberry Pi 回到等待下一次觸發
 ```
 
 ## 專案結構
@@ -44,6 +48,7 @@ ESP32 觸發任務
 │   ├── camera.py
 │   ├── agx_client.py
 │   ├── ros_control.py
+│   ├── armpi_adapter.py
 │   ├── config.example.py
 │   ├── requirements.txt
 │   ├── smoke_test.py
@@ -60,8 +65,8 @@ ESP32 觸發任務
 | 模組 | 硬體 | 職責 | 狀態 |
 | --- | --- | --- | --- |
 | `esp32/` | ESP32、按鈕、麥克風或喇叭 | 觸發系統開始任務，細節由 ESP32 組員決定 | 尚未實作 |
-| `raspberry-pi/` | Raspberry Pi、Camera、ROS、機械手臂 | 拍照、呼叫 AGX `/detect`、接收控制指令、呼叫 ROS 節點控制機械手臂 | Mock MVP 已實作 |
-| `agx/` | NVIDIA AGX | Flask API、YOLO 推論、座標轉換、任務控制指令產生 | 已可使用訓練模型推論 |
+| `raspberry-pi/` | Raspberry Pi、Camera、ROS、ArmPi-FPV | 拍照、呼叫 AGX `/detect`、接收 high-level command、產生 motion_plan、呼叫 ROS / ArmPi 控制機械手臂 | Mock MVP 已實作 |
+| `agx/` | NVIDIA AGX | Flask API、YOLO 推論、類別/bin 決策、`pick_zone` 或 `workspace_candidate` 產生、高階任務指令產生 | 已可使用訓練模型推論 |
 | `datasets/` | 本機資料夾 | 訓練 notebook、訓練權重與標註資料 | 已放入訓練成果 |
 
 ## 目前實作狀態
@@ -71,7 +76,7 @@ ESP32 觸發任務
 - `agx/` AGX 模組支援 `YOLO_INFER_MODE = "mock"` 與 `YOLO_INFER_MODE = "yolo"`，目前範例設定指向已訓練權重 `datasets/best.pt`。
 - `raspberry-pi/` 支援 `CAMERA_MODE = "mock"` 與 `CAMERA_MODE = "file"`。
 - `raspberry-pi/` 支援 `AGX_MODE = "mock"` 與 `AGX_MODE = "http"`。
-- Raspberry Pi 端會驗證 AGX 回傳的 `command`，再產生 `motion_plan`。
+- Raspberry Pi 端會驗證 AGX 回傳的 high-level `command`，再把 `pick_zone` 轉成固定夾取點並產生 `motion_plan`。
 - `smoke_test.py` 只作為開發驗證入口，不是 runtime 流程；正式執行入口是各模組的 `server.py` 或 `run_once.py`。
 
 尚未完成、需等硬體或模型確認後實作：
@@ -85,7 +90,7 @@ ESP32 觸發任務
 
 - 用本機圖片搭配 `CAMERA_MODE = "file"` 測 Raspberry Pi 流程。
 - 在同一台電腦跑 AGX mock 與 Raspberry Pi server，測 `AGX_MODE = "http"` 的雙 server 整合。
-- 用實拍圖片校正 `IMAGE_TO_WORKSPACE` 參數。
+- 用實拍圖片校正 `PICK_POINTS`，之後再校正 `IMAGE_TO_WORKSPACE` 參數。
 
 ## AI 工具入口
 
@@ -102,8 +107,8 @@ ESP32 觸發任務
 ## 模組邊界
 
 - ESP32 只負責觸發系統，AGX 不假設 ESP32 的實作方式。
-- Raspberry Pi 負責拍照、上傳圖片、接收 AGX 控制指令，以及呼叫 ROS 節點控制機械手臂。
-- AGX 負責 YOLO 推論、整理偵測結果、計算工作區座標、產生控制指令。
+- Raspberry Pi 負責拍照、上傳圖片、接收 AGX high-level command、產生 motion_plan，以及呼叫 ROS / ArmPi Python 控制機械手臂。
+- AGX 負責 YOLO 推論、整理偵測結果、分類/bin 決策、`pick_zone` 或 `workspace_candidate` 產生，以及高階任務指令產生。
 - AGX 不直接控制 ROS，也不直接操作機械手臂。
 - 模組之間使用 HTTP API 溝通，不共用本機程式碼。
 
@@ -137,10 +142,15 @@ ESP32 觸發任務
 
 ```json
 {
+  "schema_version": "1.0",
   "label": "plastic",
   "bin": "bin_c",
   "message": "已產生塑膠分類控制指令",
   "confidence": 0.91,
+  "image_size": {
+    "width": 640,
+    "height": 480
+  },
   "detection": {
     "bbox": {
       "x1": 120,
@@ -153,19 +163,13 @@ ESP32 觸發任務
       "y": 150
     }
   },
-  "workspace": {
-    "x": 0.23,
-    "y": -0.08,
-    "z": 0.02
-  },
+  "pick_zone": "left",
+  "workspace_candidate": null,
+  "workspace": null,
   "command": {
     "action": "pick_and_place",
     "target_bin": "bin_c",
-    "pick": {
-      "x": 0.23,
-      "y": -0.08,
-      "z": 0.02
-    }
+    "pick_zone": "left"
   }
 }
 ```
@@ -173,16 +177,16 @@ ESP32 觸發任務
 沒有偵測到垃圾時回應 `200`：
 
 ```json
-{"bin": null, "label": null, "message": "未偵測到垃圾", "confidence": null, "detection": null, "workspace": null, "command": null}
+{"schema_version": "1.0", "bin": null, "label": null, "message": "未偵測到垃圾", "confidence": null, "image_size": null, "detection": null, "pick_zone": null, "workspace_candidate": null, "workspace": null, "command": null}
 ```
 
 `ValueError` 回應 `422`，其他例外回應 `500`。
 
 ### Raspberry Pi ROS 控制
 
-AGX 不直接呼叫 ROS，也不直接控制機械手臂。Raspberry Pi 收到 AGX 回傳的 `command` 後，負責呼叫自己的 ROS 節點。
+AGX 不直接呼叫 ROS，也不直接控制機械手臂。Raspberry Pi 收到 AGX 回傳的 `command` 後，負責把 `pick_zone` 轉成 ArmPi-FPV 固定夾取點，再呼叫自己的 ROS 節點或 ArmPi Python 控制程式。
 
-Raspberry Pi 端可以依照自己的 ROS service/action/topic 設計轉換 `command`。AGX 只保證回傳 JSON 控制指令，不假設 Raspberry Pi 內部 ROS 實作。
+Raspberry Pi 端可以依照自己的 ROS service/action/topic 設計轉換 `motion_plan`。AGX 只保證回傳 JSON high-level command，不假設 Raspberry Pi 內部 ROS 實作。
 
 ### Raspberry Pi `POST /trigger`
 
@@ -209,23 +213,19 @@ POST /trigger
     "command": {
       "action": "pick_and_place",
       "target_bin": "bin_c",
-      "pick": {
-        "x": 0.23,
-        "y": -0.08,
-        "z": 0.02
-      }
+      "pick_zone": "left"
     }
   },
   "ros": {
     "executed": true,
     "mode": "mock",
     "motion_plan": [
-      {"step": "move_above_pick", "x": 0.23, "y": -0.08, "z": 0.12},
-      {"step": "move_to_pick", "x": 0.23, "y": -0.08, "z": 0.02},
+      {"step": "move_above_pick", "x": 0.18, "y": 0.08, "z": 0.12},
+      {"step": "move_to_pick", "x": 0.18, "y": 0.08, "z": 0.02},
       {"step": "close_gripper"},
-      {"step": "lift", "x": 0.23, "y": -0.08, "z": 0.12},
-      {"step": "move_above_bin", "target_bin": "bin_c", "x": 0.32, "y": 0.18, "z": 0.12},
-      {"step": "move_to_bin", "target_bin": "bin_c", "x": 0.32, "y": 0.18, "z": 0.05},
+      {"step": "lift", "x": 0.18, "y": 0.08, "z": 0.12},
+      {"step": "move_above_bin", "target_bin": "bin_c", "x": 0.30, "y": -0.16, "z": 0.12},
+      {"step": "move_to_bin", "target_bin": "bin_c", "x": 0.30, "y": -0.16, "z": 0.05},
       {"step": "open_gripper"},
       {"step": "return_home", "x": 0.0, "y": 0.0, "z": 0.15}
     ]
@@ -244,9 +244,10 @@ AGX `POST /detect` 內部流程：
   -> YOLOv8 推論
   -> 選擇最高信心值偵測結果
   -> 輸出 label、bbox、confidence、center
-  -> 將影像中心座標轉換成工作區座標
   -> 依照 label 對應 bin
-  -> 產生 pick_and_place 控制指令
+  -> zone 模式依照 center_x 產生 pick_zone
+  -> workspace 模式依照校正參數產生 workspace_candidate
+  -> 產生 pick_and_place high-level command
   -> 回傳 JSON 給 Raspberry Pi
 ```
 
@@ -256,7 +257,7 @@ AGX 建議模組：
 agx/
 ├── server.py        # Flask API、錯誤回應
 ├── yolo_infer.py    # YOLO 模型載入與推論
-├── task_control.py  # 工作區座標計算、控制指令產生
+├── task_control.py  # pick_zone / workspace_candidate 與控制指令產生
 ├── config.example.py
 ├── requirements.txt
 ├── smoke_test.py
@@ -265,7 +266,7 @@ agx/
     └── .gitkeep
 ```
 
-`task_control.py` 不控制硬體，只產生 Raspberry Pi 可使用的 JSON 指令。
+`task_control.py` 不控制硬體，只產生 Raspberry Pi 可使用的 JSON high-level command。demo 階段預設使用 `COORDINATE_MODE = "zone"`，把畫面分成 `left`、`middle`、`right` 三個夾取區域；相機與手臂工作區校正完成後，再改用 `COORDINATE_MODE = "workspace"` 回傳 `workspace_candidate`。
 
 ## AGX 設定
 
@@ -280,6 +281,8 @@ YOLO_DEVICE = "cuda"
 YOLO_INFER_MODE = "yolo"
 
 FLASK_PORT = 8000
+
+SCHEMA_VERSION = "1.0"
 
 CLASS_NAMES = ["tissue", "foil_pack", "plastic"]
 
@@ -296,6 +299,9 @@ MESSAGE_MAP = {
 }
 
 WORKSPACE_Z = 0.02
+
+COORDINATE_MODE = "zone"
+ZONE_SPLITS = [0.33, 0.66]
 
 IMAGE_TO_WORKSPACE = {
     "scale_x": 0.001,
@@ -333,7 +339,7 @@ Raspberry Pi mock
   -> mock camera.capture_image()
   -> 或 CAMERA_MODE=file 讀本機圖片
   -> mock agx_client.detect()
-  -> validate command
+  -> validate high-level command
   -> build motion_plan
   -> mock ros_control.execute_command()
   -> 驗證 /trigger 流程
@@ -366,6 +372,6 @@ python smoke_test.py
 - 除非專題範圍改變，不要重新加入舊的 web/backend/worker 架構。
 - 不要提交真實 API key、WiFi 密碼、本機設定檔、YOLO 權重或原始資料集。
 - 不要提交 `agx/config.py`、`esp32/config.h`、`raspberry-pi/config.py`、YOLO 權重或原始資料集。
-- AGX 只回傳控制指令；Raspberry Pi / ROS 端如何執行指令，由 Raspberry Pi 組員實作。
-- Raspberry Pi 目前用 mock camera 和 mock ROS；接硬體時只替換 `camera.py` 與 `ros_control.py` 的實作。
+- AGX 只回傳 high-level command；motion plan 與 ROS / ArmPi 控制由 Raspberry Pi 端實作。
+- Raspberry Pi 目前用 mock camera 和 mock ROS；接硬體時替換 `camera.py` 與 `armpi_adapter.py` 的實作，並依需要調整 `ros_control.py` 的流程。
 - 原始標註資料放在 `datasets/raw/`，並由 git 忽略。

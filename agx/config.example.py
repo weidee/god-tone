@@ -5,6 +5,8 @@ YOLO_INFER_MODE = "yolo"
 
 FLASK_PORT = 8000
 
+SCHEMA_VERSION = "1.0"
+
 CLASS_NAMES = ["tissue", "foil_pack", "plastic"]
 
 BIN_MAP = {
@@ -20,6 +22,9 @@ MESSAGE_MAP = {
 }
 
 WORKSPACE_Z = 0.02
+
+COORDINATE_MODE = "zone"
+ZONE_SPLITS = [0.33, 0.66]
 
 IMAGE_TO_WORKSPACE = {
     "scale_x": 0.001,

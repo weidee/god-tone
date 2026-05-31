@@ -1,6 +1,6 @@
 # Raspberry Pi 控制端
 
-Raspberry Pi 端負責拍照、呼叫 AGX `/detect`、接收 AGX 回傳的 `command`，再呼叫 ROS 節點控制機械手臂。
+Raspberry Pi 端負責拍照、呼叫 AGX `/detect`、接收 AGX 回傳的 high-level `command`，再把 `pick_zone` 轉成 ArmPi-FPV motion_plan，最後呼叫 ROS 節點或 ArmPi Python 控制機械手臂。
 
 完整系統流程與 API 合約請看根目錄 [README.md](../README.md)。
 
@@ -8,7 +8,8 @@ Raspberry Pi 端負責拍照、呼叫 AGX `/detect`、接收 AGX 回傳的 `comm
 
 - `camera.py`：預設產生 mock 圖片。
 - `agx_client.py`：將圖片上傳到 AGX `/detect`，或在無設備時回傳 mock 偵測結果。
-- `ros_control.py`：驗證 AGX 回傳的控制指令，產生 motion plan，mock 模式只印出計畫，不呼叫真實 ROS。
+- `ros_control.py`：驗證 AGX 回傳的 high-level command，產生 motion plan，mock 模式只印出計畫，不呼叫真實 ROS。
+- `armpi_adapter.py`：預留 ArmPi-FPV 原廠 ROS / Python 控制函式轉接點，目前尚未接真實硬體。
 - `server.py`：提供 `/trigger`，給 ESP32 或測試工具觸發一次分類流程。
 
 ## 檔案結構
@@ -20,6 +21,7 @@ raspberry-pi/
 ├── camera.py
 ├── agx_client.py
 ├── ros_control.py
+├── armpi_adapter.py
 ├── config.example.py
 ├── requirements.txt
 ├── smoke_test.py
@@ -45,14 +47,18 @@ CAMERA_MODE = "mock"
 CAMERA_IMAGE_PATH = "test_images/sample.jpg"
 ROS_MODE = "mock"
 COMMAND_ACTION = "pick_and_place"
-TARGET_BINS = ["bin_a", "bin_b", "bin_c"]
+PICK_POINTS = {
+    "left": {"x": 0.18, "y": 0.08, "z": 0.02},
+    "middle": {"x": 0.23, "y": 0.00, "z": 0.02},
+    "right": {"x": 0.18, "y": -0.08, "z": 0.02},
+}
+BIN_POINTS = {
+    "bin_a": {"x": 0.30, "y": 0.16, "z": 0.05},
+    "bin_b": {"x": 0.32, "y": 0.00, "z": 0.05},
+    "bin_c": {"x": 0.30, "y": -0.16, "z": 0.05},
+}
 SAFE_Z = 0.12
 HOME_POSITION = {"x": 0.0, "y": 0.0, "z": 0.15}
-BIN_POSITIONS = {
-    "bin_a": {"x": 0.12, "y": 0.18, "z": 0.05},
-    "bin_b": {"x": 0.22, "y": 0.18, "z": 0.05},
-    "bin_c": {"x": 0.32, "y": 0.18, "z": 0.05},
-}
 ```
 
 沒有 AGX 服務或網路環境時，先使用 `AGX_MODE = "mock"`。要透過 HTTP 串接 AGX 時，改成：
@@ -109,7 +115,7 @@ python run_once.py
 
 ## Motion plan
 
-Raspberry Pi 收到 AGX 的 `command` 後，會先檢查格式，再轉成 mock motion plan：
+Raspberry Pi 收到 AGX 的 `command` 後，會先檢查格式，再用 `pick_zone` 查 `PICK_POINTS`，並搭配 `target_bin` 查 `BIN_POINTS` 產生 mock motion plan：
 
 ```text
 move_above_pick
@@ -122,13 +128,14 @@ move_above_pick
   -> return_home
 ```
 
-`SAFE_Z`、`HOME_POSITION`、`BIN_POSITIONS` 目前是 mock / 初始校正值。接硬體後要依照相機、工作區與手臂實際座標重新量測。
+`PICK_POINTS`、`BIN_POINTS`、`SAFE_Z`、`HOME_POSITION` 目前是 mock / 初始校正值。接硬體後要依照相機、工作區與手臂實際座標重新量測。
 
 ## 之後接硬體時要換的地方
 
 - `camera.capture_image()`：把 mock 圖片改成實際 Camera 拍照。
 - `CAMERA_MODE = "file"`：沒有 Camera 時可先用本機圖片測流程。
-- `ros_control.execute_command()`：把 mock print 改成呼叫 ROS service/action/topic。
+- `armpi_adapter.py`：把 `move_to()`、`open_gripper()`、`close_gripper()`、`return_home()` 接到 ArmPi-FPV inverse kinematics、ROS service/action/topic 或原廠 Python 控制函式。
+- `ros_control.execute_command()`：保留 command 驗證與 motion_plan 流程，接硬體時再決定是否改成呼叫 `armpi_adapter.py` 或 ROS 節點。
 - `ros_control.validate_command()`：保留 command 格式驗證。
 - `ros_control.build_motion_plan()`：保留任務步驟骨架，依實際手臂能力調整 motion steps 與座標。
 - `config.py`：把 `CAMERA_MODE`、`ROS_MODE` 與 ROS topic 設定改成實際值。

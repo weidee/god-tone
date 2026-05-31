@@ -47,10 +47,15 @@ def _error_message(response: requests.Response) -> str:
 
 def _mock_detect() -> dict:
     return {
+        "schema_version": "1.0",
         "label": "plastic",
         "bin": "bin_c",
         "message": "已產生塑膠分類控制指令",
         "confidence": 0.91,
+        "image_size": {
+            "width": 640,
+            "height": 480,
+        },
         "detection": {
             "bbox": {
                 "x1": 120,
@@ -63,18 +68,12 @@ def _mock_detect() -> dict:
                 "y": 150,
             },
         },
-        "workspace": {
-            "x": 0.23,
-            "y": -0.08,
-            "z": 0.02,
-        },
+        "pick_zone": "left",
+        "workspace_candidate": None,
+        "workspace": None,
         "command": {
             "action": "pick_and_place",
             "target_bin": "bin_c",
-            "pick": {
-                "x": 0.23,
-                "y": -0.08,
-                "z": 0.02,
-            },
+            "pick_zone": "left",
         },
     }

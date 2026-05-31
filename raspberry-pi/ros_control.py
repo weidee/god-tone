@@ -1,5 +1,6 @@
 import json
 
+import armpi_adapter
 import config
 
 
@@ -17,6 +18,10 @@ def execute_command(command: dict | None) -> dict:
         print(json.dumps(motion_plan, ensure_ascii=False, indent=2))
         return {"executed": True, "mode": "mock", "motion_plan": motion_plan}
 
+    if config.ROS_MODE == "armpi":
+        execute_motion_plan(motion_plan)
+        return {"executed": True, "mode": "armpi", "motion_plan": motion_plan}
+
     raise NotImplementedError("real ROS control is not implemented yet")
 
 
@@ -29,25 +34,25 @@ def validate_command(command: dict) -> None:
         raise ValueError(f"unsupported command action: {action}")
 
     target_bin = command.get("target_bin")
-    if target_bin not in config.TARGET_BINS:
+    if target_bin not in config.BIN_POINTS:
         raise ValueError(f"unsupported target_bin: {target_bin}")
 
-    pick = command.get("pick")
-    if not isinstance(pick, dict):
-        raise ValueError("command.pick is required")
+    pick_zone = command.get("pick_zone")
+    workspace_candidate = command.get("workspace_candidate")
+    if pick_zone is None and workspace_candidate is None:
+        raise ValueError("command.pick_zone is required")
 
-    for axis in ("x", "y", "z"):
-        value = pick.get(axis)
-        if value is None:
-            raise ValueError(f"command.pick.{axis} is required")
-        if not isinstance(value, (int, float)):
-            raise ValueError(f"command.pick.{axis} must be a number")
+    if pick_zone is not None and pick_zone not in config.PICK_POINTS:
+        raise ValueError(f"unsupported pick_zone: {pick_zone}")
+
+    if pick_zone is None:
+        _position(workspace_candidate, "command.workspace_candidate")
 
 
 def build_motion_plan(command: dict) -> list[dict]:
-    pick = command["pick"]
+    pick = _pick_position(command)
     target_bin = command["target_bin"]
-    bin_position = _bin_position(target_bin)
+    bin_position = _bin_point(target_bin)
     home = _position(config.HOME_POSITION, "HOME_POSITION")
     safe_z = _number(config.SAFE_Z, "SAFE_Z")
 
@@ -95,12 +100,44 @@ def build_motion_plan(command: dict) -> list[dict]:
     ]
 
 
-def _bin_position(target_bin: str) -> dict:
-    positions = getattr(config, "BIN_POSITIONS", {})
-    if target_bin not in positions:
-        raise ValueError(f"missing BIN_POSITIONS for target_bin: {target_bin}")
+def execute_motion_plan(motion_plan: list[dict]) -> None:
+    for step in motion_plan:
+        name = step["step"]
 
-    return _position(positions[target_bin], f"BIN_POSITIONS.{target_bin}")
+        if name.startswith("move_") or name == "lift":
+            armpi_adapter.move_to(step["x"], step["y"], step["z"])
+        elif name == "close_gripper":
+            armpi_adapter.close_gripper()
+        elif name == "open_gripper":
+            armpi_adapter.open_gripper()
+        elif name == "return_home":
+            armpi_adapter.return_home()
+        else:
+            raise ValueError(f"unknown motion step: {name}")
+
+
+def _pick_position(command: dict) -> dict:
+    pick_zone = command.get("pick_zone")
+    if pick_zone is not None:
+        return _pick_point(pick_zone)
+
+    return _position(command.get("workspace_candidate"), "command.workspace_candidate")
+
+
+def _pick_point(pick_zone: str) -> dict:
+    points = config.PICK_POINTS
+    if pick_zone not in points:
+        raise ValueError(f"missing PICK_POINTS for pick_zone: {pick_zone}")
+
+    return _position(points[pick_zone], f"PICK_POINTS.{pick_zone}")
+
+
+def _bin_point(target_bin: str) -> dict:
+    points = config.BIN_POINTS
+    if target_bin not in points:
+        raise ValueError(f"missing BIN_POINTS for target_bin: {target_bin}")
+
+    return _position(points[target_bin], f"BIN_POINTS.{target_bin}")
 
 
 def _position(position: dict, name: str) -> dict:

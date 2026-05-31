@@ -36,10 +36,17 @@ def _assert_detect(client) -> None:
     body = response.get_json()
 
     assert response.status_code == 200
+    assert body["schema_version"] == "1.0"
     assert body["label"] == "plastic"
     assert body["bin"] == "bin_c"
+    assert body["image_size"] == {"width": 640, "height": 480}
+    assert body["pick_zone"] == "middle"
+    assert body["workspace_candidate"] is None
+    assert body["workspace"] is None
     assert body["command"]["action"] == "pick_and_place"
     assert body["command"]["target_bin"] == "bin_c"
+    assert body["command"]["pick_zone"] == "middle"
+    assert "pick" not in body["command"]
     assert body["detection"]["center"] == {"x": 320.0, "y": 240.0}
 
 

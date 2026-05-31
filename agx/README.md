@@ -1,8 +1,8 @@
 # AGX 模組
 
-`agx/` 是本專題的 AGX 模組，負責接收 Raspberry Pi 上傳的圖片、執行 YOLOv8 推論、計算工作區座標，並產生 Raspberry Pi 可用的控制指令。即使暫時使用一般電腦執行，也一律視為 AGX。
+`agx/` 是本專題的 AGX 模組，負責接收 Raspberry Pi 上傳的圖片、執行 YOLOv8 推論、判斷垃圾類別與分類桶，並產生 Raspberry Pi 可用的 high-level command。即使暫時使用一般電腦執行，也一律視為 AGX。
 
-AGX 不直接控制 ROS，也不直接操作機械手臂。Raspberry Pi 收到 AGX 回傳的 `command` 後，負責呼叫自己的 ROS 節點。
+AGX 不直接控制 ROS，也不直接操作機械手臂。Raspberry Pi 收到 AGX 回傳的 `command` 後，負責產生 motion_plan，並呼叫自己的 ROS 節點或 ArmPi Python 控制程式。
 
 ## 流程摘要
 
@@ -11,11 +11,11 @@ Raspberry Pi 拍照
   -> 上傳影像給 AGX /detect
   -> Flask API 執行 YOLOv8 推論
   -> YOLO 輸出類別、邊界框、信心值、中心座標
-  -> AGX 任務控制模組計算工作區座標
-  -> AGX 任務控制模組產生控制指令
-  -> AGX 將控制指令回傳給 Raspberry Pi
-  -> Raspberry Pi 呼叫 ROS 節點控制機械手臂
-  -> Raspberry Pi 回到等待下一張影像
+  -> AGX 任務控制模組依類別對應 target_bin
+  -> AGX 任務控制模組依中心座標產生 pick_zone 或 workspace_candidate
+  -> AGX 產生 high-level command 並回傳給 Raspberry Pi
+  -> Raspberry Pi 轉成 motion_plan 後呼叫 ROS / ArmPi 控制機械手臂
+  -> Raspberry Pi 回到等待下一次觸發
 ```
 
 完整系統流程與 API 合約請看根目錄 [README.md](../README.md)。
@@ -26,7 +26,7 @@ Raspberry Pi 拍照
 agx/
 ├── server.py        # Flask API、錯誤回應
 ├── yolo_infer.py    # YOLO 模型載入與推論
-├── task_control.py  # 工作區座標計算、控制指令產生
+├── task_control.py  # pick_zone / workspace_candidate 與控制指令產生
 ├── config.example.py
 ├── requirements.txt
 ├── smoke_test.py
@@ -66,6 +66,8 @@ cp config.example.py config.py
 - `YOLO_CONF`
 - `YOLO_DEVICE`
 - `YOLO_INFER_MODE`
+- `COORDINATE_MODE`
+- `ZONE_SPLITS`
 - 工作區座標轉換參數
 
 目前已訓練模型放在根目錄的 `datasets/best.pt`，訓練 notebook 放在 `datasets/yolo_training.ipynb`。從 `agx/` 目錄啟動時，範例設定已指向：
@@ -82,6 +84,8 @@ YOLO_INFER_MODE = "mock"
 ```
 
 mock 模式仍會檢查上傳圖片是否可讀，並回傳固定的模擬偵測結果，方便先測 API 與 Raspberry Pi 呼叫流程。
+
+demo 階段建議使用 `COORDINATE_MODE = "zone"`，AGX 只回傳 `pick_zone`，實際 ArmPi-FPV 夾取座標由 Raspberry Pi 端的 `PICK_POINTS` 決定。相機與手臂工作區校正完成後，再改用 `COORDINATE_MODE = "workspace"` 產生 `workspace_candidate`。
 
 使用已訓練模型時，保持：
 
@@ -126,6 +130,6 @@ curl -X POST http://localhost:8000/detect \
 
 - `server.py` 只處理 Flask routes 與錯誤回應。
 - `yolo_infer.py` 只處理 YOLO 模型載入與推論。
-- `task_control.py` 只處理座標轉換與控制指令產生。
+- `task_control.py` 只處理 `pick_zone` / `workspace_candidate` 與 high-level command 產生。
 - `ValueError` 回傳 HTTP 422。
 - 其他例外回傳 HTTP 500。

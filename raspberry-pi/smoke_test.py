@@ -39,9 +39,11 @@ def _assert_trigger(client) -> None:
     assert body["agx"]["label"] == "plastic"
     assert body["agx"]["bin"] == "bin_c"
     assert body["agx"]["command"]["action"] == "pick_and_place"
+    assert body["agx"]["command"]["pick_zone"] == "left"
     assert body["ros"]["executed"] is True
     assert body["ros"]["mode"] == "mock"
     assert body["ros"]["motion_plan"][0]["step"] == "move_above_pick"
+    assert body["ros"]["motion_plan"][0]["x"] == config.PICK_POINTS["left"]["x"]
     assert body["ros"]["motion_plan"][-1]["step"] == "return_home"
 
 
@@ -50,6 +52,7 @@ def _assert_run_once() -> None:
 
     assert result["status"] == "done"
     assert result["agx"]["command"]["target_bin"] == "bin_c"
+    assert result["agx"]["command"]["pick_zone"] == "left"
     assert result["ros"]["executed"] is True
     assert result["ros"]["motion_plan"][4]["target_bin"] == "bin_c"
 
@@ -89,6 +92,7 @@ def _assert_http_detect() -> None:
         assert result["label"] == "plastic"
         assert result["bin"] == "bin_c"
         assert result["command"]["target_bin"] == "bin_c"
+        assert result["command"]["pick_zone"] == "left"
         assert received["path"] == "/detect"
         assert received["content_type"].startswith("multipart/form-data")
         assert b'name="image"' in received["body"]
@@ -136,11 +140,7 @@ def _assert_invalid_command() -> None:
             {
                 "action": "bad_action",
                 "target_bin": "bin_c",
-                "pick": {
-                    "x": 0.23,
-                    "y": -0.08,
-                    "z": 0.02,
-                },
+                "pick_zone": "left",
             }
         )
     except ValueError as exc:
@@ -178,10 +178,15 @@ def _handler(received: dict, status: int = 200, response_body: dict | None = Non
 
 def _mock_ai_server_result() -> dict:
     return {
+        "schema_version": "1.0",
         "label": "plastic",
         "bin": "bin_c",
         "message": "已產生塑膠分類控制指令",
         "confidence": 0.91,
+        "image_size": {
+            "width": 640,
+            "height": 480,
+        },
         "detection": {
             "bbox": {
                 "x1": 120,
@@ -194,19 +199,13 @@ def _mock_ai_server_result() -> dict:
                 "y": 150,
             },
         },
-        "workspace": {
-            "x": 0.23,
-            "y": -0.08,
-            "z": 0.02,
-        },
+        "pick_zone": "left",
+        "workspace_candidate": None,
+        "workspace": None,
         "command": {
             "action": "pick_and_place",
             "target_bin": "bin_c",
-            "pick": {
-                "x": 0.23,
-                "y": -0.08,
-                "z": 0.02,
-            },
+            "pick_zone": "left",
         },
     }
 

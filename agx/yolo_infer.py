@@ -24,6 +24,8 @@ def infer(model: Any, image_bytes: bytes) -> dict:
     except UnidentifiedImageError as exc:
         raise ValueError("invalid image") from exc
 
+    image_size = _image_size(image)
+
     if _infer_mode() == "mock":
         return _mock_infer(image)
 
@@ -35,11 +37,11 @@ def infer(model: Any, image_bytes: bytes) -> dict:
     )
 
     if not results:
-        return {"label": None, "confidence": None}
+        return {"label": None, "confidence": None, "image_size": image_size}
 
     boxes = results[0].boxes
     if boxes is None or boxes.conf is None or len(boxes.conf) == 0:
-        return {"label": None, "confidence": None}
+        return {"label": None, "confidence": None, "image_size": image_size}
 
     best_index = int(boxes.conf.argmax().item())
     class_id = int(boxes.cls[best_index].item())
@@ -52,6 +54,7 @@ def infer(model: Any, image_bytes: bytes) -> dict:
     return {
         "label": class_name,
         "confidence": confidence,
+        "image_size": image_size,
         "bbox": {
             "x1": x1,
             "y1": y1,
@@ -76,7 +79,7 @@ def _mock_infer(image: Image.Image) -> dict:
     mock = config.MOCK_DETECTION
     label = mock["label"]
     if label is None:
-        return {"label": None, "confidence": None}
+        return {"label": None, "confidence": None, "image_size": _image_size(image)}
 
     width, height = image.size
     bbox_ratio = mock["bbox_ratio"]
@@ -90,6 +93,7 @@ def _mock_infer(image: Image.Image) -> dict:
     return {
         "label": label,
         "confidence": mock["confidence"],
+        "image_size": _image_size(image),
         "bbox": {
             "x1": x1,
             "y1": y1,
@@ -105,3 +109,8 @@ def _mock_infer(image: Image.Image) -> dict:
 
 def _infer_mode() -> str:
     return getattr(config, "YOLO_INFER_MODE", "yolo")
+
+
+def _image_size(image: Image.Image) -> dict:
+    width, height = image.size
+    return {"width": width, "height": height}
