@@ -1,14 +1,14 @@
 # Raspberry Pi 控制端
 
-Raspberry Pi 端負責拍照、呼叫 AI Server `/detect`、接收 AI Server 回傳的 `command`，再呼叫 ROS 節點控制機械手臂。
+Raspberry Pi 端負責拍照、呼叫 AGX `/detect`、接收 AGX 回傳的 `command`，再呼叫 ROS 節點控制機械手臂。
 
 完整系統流程與 API 合約請看根目錄 [README.md](../README.md)。
 
 目前沒有硬體，所以此模組先提供 mock 流程：
 
 - `camera.py`：預設產生 mock 圖片。
-- `agx_client.py`：將圖片上傳到 AI Server `/detect`，或在無設備時回傳 mock 偵測結果。
-- `ros_control.py`：預設只印出 AI Server 回傳的控制指令。
+- `agx_client.py`：將圖片上傳到 AGX `/detect`，或在無設備時回傳 mock 偵測結果。
+- `ros_control.py`：驗證 AGX 回傳的控制指令，產生 motion plan，mock 模式只印出計畫，不呼叫真實 ROS。
 - `server.py`：提供 `/trigger`，給 ESP32 或測試工具觸發一次分類流程。
 
 ## 檔案結構
@@ -55,11 +55,11 @@ BIN_POSITIONS = {
 }
 ```
 
-沒有 AI Server 或網路環境時，先使用 `AGX_MODE = "mock"`。要串接 PC/AGX 上的 AI Server 時，改成：
+沒有 AGX 服務或網路環境時，先使用 `AGX_MODE = "mock"`。要透過 HTTP 串接 AGX 時，改成：
 
 ```python
 AGX_MODE = "http"
-AGX_URL = "http://<AI_SERVER_IP>:8000"
+AGX_URL = "http://<AGX_IP>:8000"
 ```
 
 沒有 Camera 但想用真圖片測流程時，可以改成：
@@ -79,8 +79,8 @@ CAMERA_IMAGE_PATH = "/absolute/path/to/image.jpg"
 python smoke_test.py
 ```
 
-這個測試不需要 Camera、ROS 或 AI Server，會用 mock camera、mock AGX result 與 mock ROS 跑完整流程。
-測試也會啟動本機假的 `/detect` HTTP endpoint，驗證 `AGX_MODE = "http"` 時圖片會以 multipart 格式上傳，並確認 AI Server 回 `422` 時會轉成 `ValueError`。
+這個測試不需要 Camera、ROS 或 AGX 服務，會用 mock camera、mock AGX result 與 mock ROS 跑完整流程。
+測試也會啟動本機假的 `/detect` HTTP endpoint，驗證 `AGX_MODE = "http"` 時圖片會以 multipart 格式上傳，並確認 AGX 回 `422` 時會轉成 `ValueError`。
 測試也會確認 `CAMERA_MODE = "file"` 可以讀取指定圖片檔。
 
 ## 執行 server
@@ -109,7 +109,7 @@ python run_once.py
 
 ## Motion plan
 
-Raspberry Pi 收到 AI Server 的 `command` 後，會先檢查格式，再轉成 mock motion plan：
+Raspberry Pi 收到 AGX 的 `command` 後，會先檢查格式，再轉成 mock motion plan：
 
 ```text
 move_above_pick

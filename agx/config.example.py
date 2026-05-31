@@ -1,22 +1,22 @@
-YOLO_MODEL_PATH = "models/best.pt"
+YOLO_MODEL_PATH = "../datasets/best.pt"
 YOLO_CONF = 0.5
 YOLO_DEVICE = "cuda"
-YOLO_INFER_MODE = "mock"
+YOLO_INFER_MODE = "yolo"
 
 FLASK_PORT = 8000
 
-CLASS_NAMES = ["tissue", "foil_pack", "plastic_bottle"]
+CLASS_NAMES = ["tissue", "foil_pack", "plastic"]
 
 BIN_MAP = {
     "tissue": "bin_a",
     "foil_pack": "bin_b",
-    "plastic_bottle": "bin_c",
+    "plastic": "bin_c",
 }
 
 MESSAGE_MAP = {
     "tissue": "已產生衛生紙分類控制指令",
     "foil_pack": "已產生鋁箔包分類控制指令",
-    "plastic_bottle": "已產生塑膠瓶分類控制指令",
+    "plastic": "已產生塑膠分類控制指令",
 }
 
 WORKSPACE_Z = 0.02
@@ -29,7 +29,7 @@ IMAGE_TO_WORKSPACE = {
 }
 
 MOCK_DETECTION = {
-    "label": "plastic_bottle",
+    "label": "plastic",
     "confidence": 0.91,
     "bbox_ratio": {
         "x1": 0.3,

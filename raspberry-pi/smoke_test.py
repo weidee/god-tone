@@ -36,7 +36,7 @@ def _assert_trigger(client) -> None:
 
     assert response.status_code == 200
     assert body["status"] == "done"
-    assert body["agx"]["label"] == "plastic_bottle"
+    assert body["agx"]["label"] == "plastic"
     assert body["agx"]["bin"] == "bin_c"
     assert body["agx"]["command"]["action"] == "pick_and_place"
     assert body["ros"]["executed"] is True
@@ -86,7 +86,7 @@ def _assert_http_detect() -> None:
 
         result = agx_client.detect(b"mock image bytes")
 
-        assert result["label"] == "plastic_bottle"
+        assert result["label"] == "plastic"
         assert result["bin"] == "bin_c"
         assert result["command"]["target_bin"] == "bin_c"
         assert received["path"] == "/detect"
@@ -178,9 +178,9 @@ def _handler(received: dict, status: int = 200, response_body: dict | None = Non
 
 def _mock_ai_server_result() -> dict:
     return {
-        "label": "plastic_bottle",
+        "label": "plastic",
         "bin": "bin_c",
-        "message": "已產生塑膠瓶分類控制指令",
+        "message": "已產生塑膠分類控制指令",
         "confidence": 0.91,
         "detection": {
             "bbox": {

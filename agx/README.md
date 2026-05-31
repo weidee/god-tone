@@ -1,6 +1,6 @@
-# AGX AI Server
+# AGX 模組
 
-AGX 是本專題的 AI server，負責接收 Raspberry Pi 上傳的圖片、執行 YOLOv8 推論、計算工作區座標，並產生 Raspberry Pi 可用的控制指令。
+`agx/` 是本專題的 AGX 模組，負責接收 Raspberry Pi 上傳的圖片、執行 YOLOv8 推論、計算工作區座標，並產生 Raspberry Pi 可用的控制指令。即使暫時使用一般電腦執行，也一律視為 AGX。
 
 AGX 不直接控制 ROS，也不直接操作機械手臂。Raspberry Pi 收到 AGX 回傳的 `command` 後，負責呼叫自己的 ROS 節點。
 
@@ -39,7 +39,7 @@ agx/
 
 - `tissue`
 - `foil_pack`
-- `plastic_bottle`
+- `plastic`
 
 分類、bin 對應與回傳格式以根目錄 [README.md](../README.md) 為準。
 
@@ -68,7 +68,14 @@ cp config.example.py config.py
 - `YOLO_INFER_MODE`
 - 工作區座標轉換參數
 
-如果還沒有 YOLO 模型或 CUDA 環境，可以先保留：
+目前已訓練模型放在根目錄的 `datasets/best.pt`，訓練 notebook 放在 `datasets/yolo_training.ipynb`。從 `agx/` 目錄啟動時，範例設定已指向：
+
+```python
+YOLO_MODEL_PATH = "../datasets/best.pt"
+YOLO_INFER_MODE = "yolo"
+```
+
+如果還沒有 YOLO 模型或 CUDA 環境，可以在本機 `config.py` 改成：
 
 ```python
 YOLO_INFER_MODE = "mock"
@@ -76,7 +83,7 @@ YOLO_INFER_MODE = "mock"
 
 mock 模式仍會檢查上傳圖片是否可讀，並回傳固定的模擬偵測結果，方便先測 API 與 Raspberry Pi 呼叫流程。
 
-準備好 YOLO 模型後，再改成：
+使用已訓練模型時，保持：
 
 ```python
 YOLO_INFER_MODE = "yolo"
@@ -84,13 +91,7 @@ YOLO_INFER_MODE = "yolo"
 
 如果沒有 CUDA，可以先設定 `YOLO_DEVICE = "cpu"` 測試。
 
-手動放入 YOLO 模型：
-
-```text
-agx/models/best.pt
-```
-
-不要提交 `config.py` 或 `models/best.pt`。
+不要提交 `config.py` 或 YOLO 權重檔。
 
 ## 執行
 

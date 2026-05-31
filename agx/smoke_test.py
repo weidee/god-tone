@@ -36,7 +36,7 @@ def _assert_detect(client) -> None:
     body = response.get_json()
 
     assert response.status_code == 200
-    assert body["label"] == "plastic_bottle"
+    assert body["label"] == "plastic"
     assert body["bin"] == "bin_c"
     assert body["command"]["action"] == "pick_and_place"
     assert body["command"]["target_bin"] == "bin_c"

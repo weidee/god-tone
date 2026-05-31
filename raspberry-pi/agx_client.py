@@ -47,9 +47,9 @@ def _error_message(response: requests.Response) -> str:
 
 def _mock_detect() -> dict:
     return {
-        "label": "plastic_bottle",
+        "label": "plastic",
         "bin": "bin_c",
-        "message": "已產生塑膠瓶分類控制指令",
+        "message": "已產生塑膠分類控制指令",
         "confidence": 0.91,
         "detection": {
             "bbox": {

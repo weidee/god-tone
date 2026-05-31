@@ -9,8 +9,6 @@ pnpm-debug.log*
 .env
 .env.local
 *.env
-AGENTS.md
-CLAUDE.md
 agx/config.py
 esp32/config.h
 raspberry-pi/config.py
@@ -20,6 +18,19 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+.ipynb_checkpoints/
+
+# Model and training artifacts
+*.pt
+*.onnx
+*.engine
+*.torchscript
+*.tflite
+*.mlpackage/
+runs/
+wandb/
+labels.cache
+*.cache
 
 # AGX model artifacts
 agx/models/*.pt
@@ -29,6 +40,11 @@ agx/models/*.engine
 # Local datasets
 datasets/raw/
 datasets/processed/
+datasets/*.zip
+datasets/*.tar
+datasets/*.tar.gz
+datasets/*.pt
+datasets/*.ipynb
 
 # Build outputs
 dist/
