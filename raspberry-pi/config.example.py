@@ -17,11 +17,11 @@ CAPTURE_FILENAME = "capture.jpg"
 CAPTURE_MIME_TYPE = "image/jpeg"
 
 COMMAND_ACTION = "pick_and_place"
-CLASS_NAMES = ["metal", "plastic", "paper"]
+CLASS_NAMES = ["tissue", "foil_pack", "plastic"]
 BIN_MAP = {
-    "metal": "bin_a",
-    "plastic": "bin_b",
-    "paper": "bin_c",
+    "tissue": "bin_a",
+    "foil_pack": "bin_b",
+    "plastic": "bin_c",
 }
 
 SCRIPT_DIR = "api/srcipts"
@@ -29,9 +29,9 @@ SCRIPT_PYTHON = "python3"
 SCRIPT_TIMEOUT = 120
 SCRIPT_PASS_JSON = True
 BIN_SCRIPT_MAP = {
-    "bin_a": "metal_10_10.py",
-    "bin_b": "plastic_10_10.py",
-    "bin_c": "paper_10_10.py",
+    "bin_a": "tissue_10_10.py",
+    "bin_b": "foil_pack_10_10.py",
+    "bin_c": "plastic_10_10.py",
 }
 
 PICK_POINTS = {
@@ -55,7 +55,7 @@ WORKSPACE_LIMITS = {
 MOCK_AGX_RESULT = {
     "schema_version": "1.0",
     "label": "plastic",
-    "bin": "bin_b",
+    "bin": "bin_c",
     "message": "已產生塑膠分類控制指令",
     "confidence": 0.91,
     "image_size": {
@@ -79,7 +79,7 @@ MOCK_AGX_RESULT = {
     "workspace": None,
     "command": {
         "action": "pick_and_place",
-        "target_bin": "bin_b",
+        "target_bin": "bin_c",
         "pick_zone": "left",
     },
 }

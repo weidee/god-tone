@@ -10,9 +10,9 @@ datasets/
 ├── yolo_training.ipynb
 ├── best.pt
 ├── raw/
-│   ├── metal/
-│   ├── plastic/
-│   └── paper/
+│   ├── tissue/
+│   ├── foil_pack/
+│   └── plastic/
 └── processed/
 ```
 
@@ -20,9 +20,9 @@ datasets/
 
 | 類別 | Label | Bin |
 | --- | --- | --- |
-| 金屬 | `metal` | `bin_a` |
-| 塑膠 | `plastic` | `bin_b` |
-| 紙類 | `paper` | `bin_c` |
+| 衛生紙 | `tissue` | `bin_a` |
+| 鋁箔包 | `foil_pack` | `bin_b` |
+| 塑膠 | `plastic` | `bin_c` |
 
 `yolo_training.ipynb` 是訓練 notebook；`best.pt` 是訓練完成後給 AGX 推論使用的權重。AGX 範例設定使用 `YOLO_MODEL_PATH = "../datasets/best.pt"`，所以從 `agx/` 目錄啟動 server 時不用再複製模型到 `agx/models/`。
 

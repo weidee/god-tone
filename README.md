@@ -64,11 +64,11 @@ ESP32 偵測到觸發訊號
 
 | 垃圾 | Label | Bin | 回傳訊息 |
 | --- | --- | --- | --- |
-| 金屬 | `metal` | `bin_a` | `已產生金屬分類控制指令` |
-| 塑膠 | `plastic` | `bin_b` | `已產生塑膠分類控制指令` |
-| 紙類 | `paper` | `bin_c` | `已產生紙類分類控制指令` |
+| 衛生紙 | `tissue` | `bin_a` | `已產生衛生紙分類控制指令` |
+| 鋁箔包 | `foil_pack` | `bin_b` | `已產生鋁箔包分類控制指令` |
+| 塑膠 | `plastic` | `bin_c` | `已產生塑膠分類控制指令` |
 
-YOLO 權重輸出的 class name 必須與 `metal`、`plastic`、`paper` 完全一致；其他 label 由 AGX 以 `422` 回應。
+YOLO 權重輸出的 class name 必須與 `tissue`、`foil_pack`、`plastic` 完全一致；其他 label 由 AGX 以 `422` 回應。
 
 ## AGX API
 
@@ -94,7 +94,7 @@ YOLO 權重輸出的 class name 必須與 `metal`、`plastic`、`paper` 完全�
 {
   "schema_version": "1.0",
   "label": "plastic",
-  "bin": "bin_b",
+  "bin": "bin_c",
   "message": "已產生塑膠分類控制指令",
   "confidence": 0.91,
   "image_size": {
@@ -118,7 +118,7 @@ YOLO 權重輸出的 class name 必須與 `metal`、`plastic`、`paper` 完全�
   "workspace": null,
   "command": {
     "action": "pick_and_place",
-    "target_bin": "bin_b",
+    "target_bin": "bin_c",
     "pick_zone": "left"
   }
 }
@@ -177,10 +177,10 @@ camera.capture_image()
   "status": "done",
   "agx": {
     "label": "plastic",
-    "bin": "bin_b",
+    "bin": "bin_c",
     "command": {
       "action": "pick_and_place",
-      "target_bin": "bin_b",
+      "target_bin": "bin_c",
       "pick_zone": "left"
     }
   },
@@ -192,13 +192,13 @@ camera.capture_image()
       {"step": "move_to_pick", "x": 0.18, "y": 0.08, "z": 0.02},
       {"step": "close_gripper"},
       {"step": "lift", "x": 0.18, "y": 0.08, "z": 0.12},
-      {"step": "move_above_bin", "target_bin": "bin_b", "x": 0.32, "y": 0.00, "z": 0.12},
-      {"step": "move_to_bin", "target_bin": "bin_b", "x": 0.32, "y": 0.00, "z": 0.05},
+      {"step": "move_above_bin", "target_bin": "bin_c", "x": 0.30, "y": -0.16, "z": 0.12},
+      {"step": "move_to_bin", "target_bin": "bin_c", "x": 0.30, "y": -0.16, "z": 0.05},
       {"step": "open_gripper"},
       {"step": "return_home", "x": 0.0, "y": 0.0, "z": 0.15}
     ],
     "script": {
-      "target_bin": "bin_b",
+      "target_bin": "bin_c",
       "name": "plastic_10_10.py",
       "path": "/path/to/raspberry-pi/api/srcipts/plastic_10_10.py"
     }
@@ -220,7 +220,7 @@ AGX 回傳給 Raspberry Pi 的 `command` 必須符合：
 ```json
 {
   "action": "pick_and_place",
-  "target_bin": "bin_b",
+  "target_bin": "bin_c",
   "pick_zone": "left"
 }
 ```
@@ -230,7 +230,7 @@ AGX 回傳給 Raspberry Pi 的 `command` 必須符合：
 ```json
 {
   "action": "pick_and_place",
-  "target_bin": "bin_b",
+  "target_bin": "bin_c",
   "workspace_candidate": {
     "x": 0.18,
     "y": 0.08,
@@ -282,18 +282,18 @@ FLASK_PORT = 8000
 SCHEMA_VERSION = "1.0"
 COMMAND_ACTION = "pick_and_place"
 
-CLASS_NAMES = ["metal", "plastic", "paper"]
+CLASS_NAMES = ["tissue", "foil_pack", "plastic"]
 
 BIN_MAP = {
-    "metal": "bin_a",
-    "plastic": "bin_b",
-    "paper": "bin_c",
+    "tissue": "bin_a",
+    "foil_pack": "bin_b",
+    "plastic": "bin_c",
 }
 
 MESSAGE_MAP = {
-    "metal": "已產生金屬分類控制指令",
+    "tissue": "已產生衛生紙分類控制指令",
+    "foil_pack": "已產生鋁箔包分類控制指令",
     "plastic": "已產生塑膠分類控制指令",
-    "paper": "已產生紙類分類控制指令",
 }
 
 WORKSPACE_Z = 0.02
@@ -325,11 +325,11 @@ CAPTURE_FILENAME = "capture.jpg"
 CAPTURE_MIME_TYPE = "image/jpeg"
 
 COMMAND_ACTION = "pick_and_place"
-CLASS_NAMES = ["metal", "plastic", "paper"]
+CLASS_NAMES = ["tissue", "foil_pack", "plastic"]
 BIN_MAP = {
-    "metal": "bin_a",
-    "plastic": "bin_b",
-    "paper": "bin_c",
+    "tissue": "bin_a",
+    "foil_pack": "bin_b",
+    "plastic": "bin_c",
 }
 
 SCRIPT_DIR = "api/srcipts"
@@ -337,9 +337,9 @@ SCRIPT_PYTHON = "python3"
 SCRIPT_TIMEOUT = 120
 SCRIPT_PASS_JSON = True
 BIN_SCRIPT_MAP = {
-    "bin_a": "metal_10_10.py",
-    "bin_b": "plastic_10_10.py",
-    "bin_c": "paper_10_10.py",
+    "bin_a": "tissue_10_10.py",
+    "bin_b": "foil_pack_10_10.py",
+    "bin_c": "plastic_10_10.py",
 }
 
 PICK_POINTS = {
@@ -389,7 +389,7 @@ python run_once.py
 目前文件已覆蓋以下開發規格：
 
 - 模組責任與禁止跨界行為。
-- `metal`、`plastic`、`paper` label 與 bin 對應。
+- `tissue`、`foil_pack`、`plastic` label 與 bin 對應。
 - AGX `/ping`、`/detect` API request / response。
 - Raspberry Pi `/ping`、`/trigger` API request / response。
 - command schema 與 motion plan schema。

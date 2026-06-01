@@ -9,18 +9,18 @@ FLASK_PORT = 8000
 SCHEMA_VERSION = "1.0"
 COMMAND_ACTION = "pick_and_place"
 
-CLASS_NAMES = ["metal", "plastic", "paper"]
+CLASS_NAMES = ["tissue", "foil_pack", "plastic"]
 
 BIN_MAP = {
-    "metal": "bin_a",
-    "plastic": "bin_b",
-    "paper": "bin_c",
+    "tissue": "bin_a",
+    "foil_pack": "bin_b",
+    "plastic": "bin_c",
 }
 
 MESSAGE_MAP = {
-    "metal": "已產生金屬分類控制指令",
+    "tissue": "已產生衛生紙分類控制指令",
+    "foil_pack": "已產生鋁箔包分類控制指令",
     "plastic": "已產生塑膠分類控制指令",
-    "paper": "已產生紙類分類控制指令",
 }
 
 WORKSPACE_Z = 0.02

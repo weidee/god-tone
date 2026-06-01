@@ -40,7 +40,7 @@ def _assert_trigger(client) -> None:
     assert response.status_code == 200
     assert body["status"] == "done"
     assert body["agx"]["label"] == "plastic"
-    assert body["agx"]["bin"] == "bin_b"
+    assert body["agx"]["bin"] == "bin_c"
     assert body["agx"]["command"]["action"] == "pick_and_place"
     assert body["agx"]["command"]["pick_zone"] == "left"
     assert body["ros"]["executed"] is True
@@ -54,10 +54,10 @@ def _assert_run_once() -> None:
     result = server.run_once()
 
     assert result["status"] == "done"
-    assert result["agx"]["command"]["target_bin"] == "bin_b"
+    assert result["agx"]["command"]["target_bin"] == "bin_c"
     assert result["agx"]["command"]["pick_zone"] == "left"
     assert result["ros"]["executed"] is True
-    assert result["ros"]["motion_plan"][4]["target_bin"] == "bin_b"
+    assert result["ros"]["motion_plan"][4]["target_bin"] == "bin_c"
 
 
 def _assert_file_camera() -> None:
@@ -93,8 +93,8 @@ def _assert_http_detect() -> None:
         result = agx_client.detect(b"mock image bytes")
 
         assert result["label"] == "plastic"
-        assert result["bin"] == "bin_b"
-        assert result["command"]["target_bin"] == "bin_b"
+        assert result["bin"] == "bin_c"
+        assert result["command"]["target_bin"] == "bin_c"
         assert result["command"]["pick_zone"] == "left"
         assert received["path"] == "/detect"
         assert received["content_type"].startswith("multipart/form-data")
@@ -153,12 +153,12 @@ def _assert_script_mode() -> None:
             config.SCRIPT_DIR = script_dir
             config.SCRIPT_PYTHON = sys.executable
             config.SCRIPT_TIMEOUT = 5
-            config.BIN_SCRIPT_MAP = {"bin_b": "plastic_test.py"}
+            config.BIN_SCRIPT_MAP = {"bin_c": "plastic_test.py"}
 
             result = ros_control.execute_command(
                 {
                     "action": "pick_and_place",
-                    "target_bin": "bin_b",
+                    "target_bin": "bin_c",
                     "pick_zone": "left",
                 }
             )
@@ -181,7 +181,7 @@ def _assert_invalid_command() -> None:
         ros_control.execute_command(
             {
                 "action": "bad_action",
-                "target_bin": "bin_b",
+                "target_bin": "bin_c",
                 "pick_zone": "left",
             }
         )
@@ -222,7 +222,7 @@ def _mock_ai_server_result() -> dict:
     return {
         "schema_version": "1.0",
         "label": "plastic",
-        "bin": "bin_b",
+        "bin": "bin_c",
         "message": "已產生塑膠分類控制指令",
         "confidence": 0.91,
         "image_size": {
@@ -246,7 +246,7 @@ def _mock_ai_server_result() -> dict:
         "workspace": None,
         "command": {
             "action": "pick_and_place",
-            "target_bin": "bin_b",
+            "target_bin": "bin_c",
             "pick_zone": "left",
         },
     }

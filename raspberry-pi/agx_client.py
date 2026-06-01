@@ -80,7 +80,7 @@ def _validate_detection_payload(payload: dict) -> None:
     if not isinstance(label, str) or not label:
         raise ValueError("AGX response label is required when command is present")
 
-    allowed_labels = getattr(config, "CLASS_NAMES", ["metal", "plastic", "paper"])
+    allowed_labels = getattr(config, "CLASS_NAMES", ["tissue", "foil_pack", "plastic"])
     if label not in allowed_labels:
         raise ValueError(f"unsupported AGX label: {label}")
 
@@ -181,9 +181,9 @@ def _bin_map() -> dict:
         config,
         "BIN_MAP",
         {
-            "metal": "bin_a",
-            "plastic": "bin_b",
-            "paper": "bin_c",
+            "tissue": "bin_a",
+            "foil_pack": "bin_b",
+            "plastic": "bin_c",
         },
     )
     if not isinstance(mapping, dict):
@@ -225,7 +225,7 @@ def _number(value, name: str) -> float:
 _DEFAULT_MOCK_AGX_RESULT = {
     "schema_version": "1.0",
     "label": "plastic",
-    "bin": "bin_b",
+    "bin": "bin_c",
     "message": "已產生塑膠分類控制指令",
     "confidence": 0.91,
     "image_size": {
@@ -249,7 +249,7 @@ _DEFAULT_MOCK_AGX_RESULT = {
     "workspace": None,
     "command": {
         "action": "pick_and_place",
-        "target_bin": "bin_b",
+        "target_bin": "bin_c",
         "pick_zone": "left",
     },
 }
