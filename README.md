@@ -27,8 +27,6 @@ ESP32 / 音箱偵測到 ON
 ```text
 .
 ├── README.md
-├── AGENTS.md
-├── CLAUDE.md
 ├── agx/
 │   ├── server.py
 │   ├── task_control.py
@@ -91,18 +89,6 @@ ESP32 / 音箱偵測到 ON
 - 在同一台電腦跑 AGX mock 與 Raspberry Pi server，測 `AGX_MODE = "http"` 的雙 server 整合。
 - 用實拍圖片校正 `PICK_POINTS`，之後再校正 `IMAGE_TO_WORKSPACE` 參數。
 
-## AI 工具入口
-
-不同 AI coding 工具請先閱讀以下檔案，避免讀到不同版本的規格：
-
-| 工具 | 入口檔 |
-| --- | --- |
-| Codex | `AGENTS.md` |
-| Claude | `CLAUDE.md` |
-| OpenCode | `AGENTS.md` |
-
-專案規格以 `README.md` 為主，AI 開發規則以 `AGENTS.md` 為主。`CLAUDE.md` 只作為入口提示，不另外維護一份規格。
-
 ## 模組邊界
 
 - ESP32 只負責觸發系統，AGX 不假設 ESP32 的實作方式。
@@ -119,7 +105,7 @@ ESP32 / 音箱偵測到 ON
 | 塑膠 | `plastic` | `bin_b` | `已產生塑膠分類控制指令` |
 | 紙類 | `paper` | `bin_c` | `已產生紙類分類控制指令` |
 
-YOLO 權重輸出的 class name 必須與 `metal`、`plastic`、`paper` 完全一致；若使用舊 label 權重，AGX 會依合約回傳 422。
+YOLO 權重輸出的 class name 必須與 `metal`、`plastic`、`paper` 完全一致；若使用其他 label 權重，AGX 會依合約回傳 422。
 
 ## API 合約
 
@@ -286,9 +272,11 @@ YOLO_CONF = 0.5
 YOLO_DEVICE = "cuda"
 YOLO_INFER_MODE = "yolo"
 
+FLASK_HOST = "0.0.0.0"
 FLASK_PORT = 8000
 
 SCHEMA_VERSION = "1.0"
+COMMAND_ACTION = "pick_and_place"
 
 CLASS_NAMES = ["metal", "plastic", "paper"]
 

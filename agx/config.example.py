@@ -3,9 +3,11 @@ YOLO_CONF = 0.5
 YOLO_DEVICE = "cuda"
 YOLO_INFER_MODE = "yolo"
 
+FLASK_HOST = "0.0.0.0"
 FLASK_PORT = 8000
 
 SCHEMA_VERSION = "1.0"
+COMMAND_ACTION = "pick_and_place"
 
 CLASS_NAMES = ["metal", "plastic", "paper"]
 

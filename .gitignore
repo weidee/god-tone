@@ -14,6 +14,10 @@ esp32/config.h
 esp32/firmware/src/config.h
 raspberry-pi/config.py
 
+# Local AI tool instructions
+AGENTS.md
+CLAUDE.md
+
 # Python
 __pycache__/
 *.pyc

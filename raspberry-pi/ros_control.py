@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -62,13 +63,15 @@ def validate_command(command: dict) -> None:
     pick_zone = command.get("pick_zone")
     workspace_candidate = command.get("workspace_candidate")
     if pick_zone is None and workspace_candidate is None:
-        raise ValueError("command.pick_zone is required")
+        raise ValueError("command must include pick_zone or workspace_candidate")
+    if pick_zone is not None and workspace_candidate is not None:
+        raise ValueError("command must not include both pick_zone and workspace_candidate")
 
     if pick_zone is not None and pick_zone not in config.PICK_POINTS:
         raise ValueError(f"unsupported pick_zone: {pick_zone}")
 
     if pick_zone is None:
-        _position(workspace_candidate, "command.workspace_candidate")
+        _workspace_position(workspace_candidate, "command.workspace_candidate")
 
 
 def build_motion_plan(command: dict) -> list[dict]:
@@ -157,6 +160,7 @@ def execute_script(command: dict) -> dict:
     if script_plan is None:
         raise ValueError(f"missing BIN_SCRIPT_MAP for target_bin: {command['target_bin']}")
 
+    motion_plan = build_motion_plan(command)
     script_path = Path(script_plan["path"])
     if not script_path.is_file():
         raise ValueError(f"script file not found: {script_path}")
@@ -169,6 +173,7 @@ def execute_script(command: dict) -> dict:
             [python_executable, str(script_path)],
             check=False,
             capture_output=True,
+            env=_script_env(command, motion_plan),
             text=True,
             timeout=timeout,
         )
@@ -180,6 +185,7 @@ def execute_script(command: dict) -> dict:
         "returncode": completed.returncode,
         "stdout": completed.stdout,
         "stderr": completed.stderr,
+        "motion_plan_passed": bool(getattr(config, "SCRIPT_PASS_JSON", True)),
     }
     if completed.returncode != 0:
         raise RuntimeError(f"script failed with code {completed.returncode}: {script_path}")
@@ -192,7 +198,7 @@ def _pick_position(command: dict) -> dict:
     if pick_zone is not None:
         return _pick_point(pick_zone)
 
-    return _position(command.get("workspace_candidate"), "command.workspace_candidate")
+    return _workspace_position(command.get("workspace_candidate"), "command.workspace_candidate")
 
 
 def _pick_point(pick_zone: str) -> dict:
@@ -222,13 +228,39 @@ def _position(position: dict, name: str) -> dict:
     }
 
 
+def _workspace_position(position: dict, name: str) -> dict:
+    point = _position(position, name)
+    limits = getattr(config, "WORKSPACE_LIMITS", None)
+    if limits is None:
+        return point
+
+    if not isinstance(limits, dict):
+        raise ValueError("WORKSPACE_LIMITS must be an object")
+
+    for axis in ("x", "y", "z"):
+        axis_limits = limits.get(axis)
+        if axis_limits is None:
+            continue
+        if not isinstance(axis_limits, dict):
+            raise ValueError(f"WORKSPACE_LIMITS.{axis} must be an object")
+
+        minimum = _number(axis_limits.get("min"), f"WORKSPACE_LIMITS.{axis}.min")
+        maximum = _number(axis_limits.get("max"), f"WORKSPACE_LIMITS.{axis}.max")
+        if minimum > maximum:
+            raise ValueError(f"WORKSPACE_LIMITS.{axis}.min must be <= max")
+        if point[axis] < minimum or point[axis] > maximum:
+            raise ValueError(f"{name}.{axis} is outside WORKSPACE_LIMITS.{axis}")
+
+    return point
+
+
 def _number(value, name: str) -> float:
     if value is None:
         raise ValueError(f"{name} is required")
-    if not isinstance(value, (int, float)):
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise ValueError(f"{name} must be a number")
 
-    return value
+    return float(value)
 
 
 def _positive_number(value, name: str) -> float:
@@ -265,3 +297,13 @@ def _script_name(script_name: str) -> str:
         raise ValueError("script name must end with .py")
 
     return script_name
+
+
+def _script_env(command: dict, motion_plan: list[dict]) -> dict | None:
+    if not getattr(config, "SCRIPT_PASS_JSON", True):
+        return None
+
+    env = os.environ.copy()
+    env["TRASH_SORTING_COMMAND_JSON"] = json.dumps(command, ensure_ascii=False)
+    env["TRASH_SORTING_MOTION_PLAN_JSON"] = json.dumps(motion_plan, ensure_ascii=False)
+    return env

@@ -43,13 +43,26 @@ cp config.example.py config.py
 ```python
 AGX_URL = "http://192.168.x.x:8000"
 AGX_MODE = "mock"
+EXPECTED_AGX_SCHEMA_VERSION = "1.0"
+FLASK_HOST = "0.0.0.0"
+FLASK_PORT = 5000
 CAMERA_MODE = "mock"
 CAMERA_IMAGE_PATH = "test_images/sample.jpg"
 ROS_MODE = "mock"
+REQUEST_TIMEOUT = 10
+CAPTURE_FILENAME = "capture.jpg"
+CAPTURE_MIME_TYPE = "image/jpeg"
 COMMAND_ACTION = "pick_and_place"
+CLASS_NAMES = ["metal", "plastic", "paper"]
+BIN_MAP = {
+    "metal": "bin_a",
+    "plastic": "bin_b",
+    "paper": "bin_c",
+}
 SCRIPT_DIR = "api/srcipts"
 SCRIPT_PYTHON = "python3"
 SCRIPT_TIMEOUT = 120
+SCRIPT_PASS_JSON = True
 BIN_SCRIPT_MAP = {
     "bin_a": "metal_10_10.py",
     "bin_b": "plastic_10_10.py",
@@ -67,6 +80,11 @@ BIN_POINTS = {
 }
 SAFE_Z = 0.12
 HOME_POSITION = {"x": 0.0, "y": 0.0, "z": 0.15}
+WORKSPACE_LIMITS = {
+    "x": {"min": -0.05, "max": 0.40},
+    "y": {"min": -0.25, "max": 0.25},
+    "z": {"min": 0.00, "max": 0.20},
+}
 ```
 
 沒有 AGX 服務或網路環境時，先使用 `AGX_MODE = "mock"`。要透過 HTTP 串接 AGX 時，改成：
@@ -97,7 +115,7 @@ BIN_SCRIPT_MAP = {
 }
 ```
 
-script 模式仍會先驗證 AGX command 並產生 motion_plan，再依 `target_bin` 找腳本執行。mock 模式只會回傳預計執行的腳本資訊，不會呼叫真實硬體。
+script 模式仍會先驗證 AGX command 並產生 motion_plan，再依 `target_bin` 找腳本執行。`SCRIPT_PASS_JSON = True` 時會用環境變數 `TRASH_SORTING_COMMAND_JSON` 與 `TRASH_SORTING_MOTION_PLAN_JSON` 傳入 command 與 motion plan。mock 模式只會回傳預計執行的腳本資訊，不會呼叫真實硬體。
 
 不要提交 `config.py`。
 

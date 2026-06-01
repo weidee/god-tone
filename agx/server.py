@@ -38,4 +38,4 @@ def detect():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=config.FLASK_PORT)
+    app.run(host=config.FLASK_HOST, port=config.FLASK_PORT)

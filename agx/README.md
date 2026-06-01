@@ -67,6 +67,9 @@ cp config.example.py config.py
 - `YOLO_CONF`
 - `YOLO_DEVICE`
 - `YOLO_INFER_MODE`
+- `FLASK_HOST`
+- `FLASK_PORT`
+- `COMMAND_ACTION`
 - `COORDINATE_MODE`
 - `ZONE_SPLITS`
 - 工作區座標轉換參數
@@ -104,7 +107,7 @@ YOLO_INFER_MODE = "yolo"
 python server.py
 ```
 
-server 監聽 `0.0.0.0` 與 `config.FLASK_PORT`。
+server 監聽 `config.FLASK_HOST` 與 `config.FLASK_PORT`。
 
 ## 測試
 
