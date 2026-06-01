@@ -22,7 +22,7 @@
 - `firmware/.pio/`：PlatformIO build、libdeps、firmware binary 等產物。
 - `.git/`：組員原本專案帶進來的巢狀 git metadata。
 - `.vscode/`、`.DS_Store`、`.python-version`：個人開發環境檔案。
-- `firmware/src/config.h`：本機 WiFi、token、腳位等設定，可能含 secret，不要提交。
+- `firmware/src/config.h`：本機 WiFi、token、腳位等設定，可能含 secret，不要提交。請從 `firmware/src/config.example.h` 複製後自行填值。
 
 ## 保留在 repo 的內容
 
@@ -37,6 +37,7 @@
 在 `esp32/firmware/` 底下執行：
 
 ```sh
+cp src/config.example.h src/config.h
 pio run
 pio run -t upload
 pio device monitor -b 115200
