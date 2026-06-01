@@ -11,6 +11,7 @@ pnpm-debug.log*
 *.env
 agx/config.py
 esp32/config.h
+esp32/firmware/src/config.h
 raspberry-pi/config.py
 
 # Python
@@ -36,6 +37,27 @@ labels.cache
 agx/models/*.pt
 agx/models/*.onnx
 agx/models/*.engine
+
+# ESP32 imported repo metadata and local artifacts
+esp32/.git/
+esp32/.DS_Store
+esp32/.github/
+esp32/.python-version
+esp32/.vscode/
+esp32/firmware/.pio/
+esp32/firmware/.vscode/
+esp32/firmware/**/*.tmp
+esp32/memory_test/
+
+# ESP32 model training artifacts
+esp32/model/
+esp32/**/speech_data/
+esp32/**/training_data/
+esp32/**/testing_data/
+esp32/**/all_data/
+esp32/**/.ipynb_checkpoints/
+esp32/**/*.npz
+esp32/**/*.model
 
 # Local datasets
 datasets/raw/

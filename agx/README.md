@@ -37,11 +37,12 @@ agx/
 
 ## 支援分類
 
-- `tissue`
-- `foil_pack`
+- `metal`
 - `plastic`
+- `paper`
 
 分類、bin 對應與回傳格式以根目錄 [README.md](../README.md) 為準。
+YOLO 權重輸出的 class name 必須與上述 label 完全一致。
 
 ## 安裝
 

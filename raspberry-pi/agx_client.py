@@ -49,7 +49,7 @@ def _mock_detect() -> dict:
     return {
         "schema_version": "1.0",
         "label": "plastic",
-        "bin": "bin_c",
+        "bin": "bin_b",
         "message": "已產生塑膠分類控制指令",
         "confidence": 0.91,
         "image_size": {
@@ -73,7 +73,7 @@ def _mock_detect() -> dict:
         "workspace": None,
         "command": {
             "action": "pick_and_place",
-            "target_bin": "bin_c",
+            "target_bin": "bin_b",
             "pick_zone": "left",
         },
     }

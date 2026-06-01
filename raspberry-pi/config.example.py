@@ -15,6 +15,15 @@ REQUEST_TIMEOUT = 10
 
 COMMAND_ACTION = "pick_and_place"
 
+SCRIPT_DIR = "api/srcipts"
+SCRIPT_PYTHON = "python3"
+SCRIPT_TIMEOUT = 120
+BIN_SCRIPT_MAP = {
+    "bin_a": "metal_10_10.py",
+    "bin_b": "plastic_10_10.py",
+    "bin_c": "paper_10_10.py",
+}
+
 PICK_POINTS = {
     "left": {"x": 0.18, "y": 0.08, "z": 0.02},
     "middle": {"x": 0.23, "y": 0.00, "z": 0.02},

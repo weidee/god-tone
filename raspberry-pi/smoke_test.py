@@ -1,6 +1,8 @@
 import json
+import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from tempfile import NamedTemporaryFile
+from pathlib import Path
+from tempfile import NamedTemporaryFile, TemporaryDirectory
 from threading import Thread
 
 import agx_client
@@ -19,6 +21,7 @@ def main() -> None:
     _assert_file_camera()
     _assert_http_detect()
     _assert_http_value_error()
+    _assert_script_mode()
     _assert_invalid_command()
 
     print("Raspberry Pi smoke test passed")
@@ -37,7 +40,7 @@ def _assert_trigger(client) -> None:
     assert response.status_code == 200
     assert body["status"] == "done"
     assert body["agx"]["label"] == "plastic"
-    assert body["agx"]["bin"] == "bin_c"
+    assert body["agx"]["bin"] == "bin_b"
     assert body["agx"]["command"]["action"] == "pick_and_place"
     assert body["agx"]["command"]["pick_zone"] == "left"
     assert body["ros"]["executed"] is True
@@ -51,10 +54,10 @@ def _assert_run_once() -> None:
     result = server.run_once()
 
     assert result["status"] == "done"
-    assert result["agx"]["command"]["target_bin"] == "bin_c"
+    assert result["agx"]["command"]["target_bin"] == "bin_b"
     assert result["agx"]["command"]["pick_zone"] == "left"
     assert result["ros"]["executed"] is True
-    assert result["ros"]["motion_plan"][4]["target_bin"] == "bin_c"
+    assert result["ros"]["motion_plan"][4]["target_bin"] == "bin_b"
 
 
 def _assert_file_camera() -> None:
@@ -90,8 +93,8 @@ def _assert_http_detect() -> None:
         result = agx_client.detect(b"mock image bytes")
 
         assert result["label"] == "plastic"
-        assert result["bin"] == "bin_c"
-        assert result["command"]["target_bin"] == "bin_c"
+        assert result["bin"] == "bin_b"
+        assert result["command"]["target_bin"] == "bin_b"
         assert result["command"]["pick_zone"] == "left"
         assert received["path"] == "/detect"
         assert received["content_type"].startswith("multipart/form-data")
@@ -134,12 +137,51 @@ def _assert_http_value_error() -> None:
         thread.join(timeout=2)
 
 
+def _assert_script_mode() -> None:
+    old_mode = getattr(config, "ROS_MODE", None)
+    old_script_dir = getattr(config, "SCRIPT_DIR", None)
+    old_script_python = getattr(config, "SCRIPT_PYTHON", None)
+    old_script_timeout = getattr(config, "SCRIPT_TIMEOUT", None)
+    old_script_map = getattr(config, "BIN_SCRIPT_MAP", None)
+
+    with TemporaryDirectory() as script_dir:
+        script_path = Path(script_dir) / "plastic_test.py"
+        script_path.write_text("print('script ok')\n", encoding="utf-8")
+
+        try:
+            config.ROS_MODE = "script"
+            config.SCRIPT_DIR = script_dir
+            config.SCRIPT_PYTHON = sys.executable
+            config.SCRIPT_TIMEOUT = 5
+            config.BIN_SCRIPT_MAP = {"bin_b": "plastic_test.py"}
+
+            result = ros_control.execute_command(
+                {
+                    "action": "pick_and_place",
+                    "target_bin": "bin_b",
+                    "pick_zone": "left",
+                }
+            )
+
+            assert result["executed"] is True
+            assert result["mode"] == "script"
+            assert result["script"]["name"] == "plastic_test.py"
+            assert result["script"]["returncode"] == 0
+            assert result["script"]["stdout"] == "script ok\n"
+        finally:
+            _restore_config("ROS_MODE", old_mode)
+            _restore_config("SCRIPT_DIR", old_script_dir)
+            _restore_config("SCRIPT_PYTHON", old_script_python)
+            _restore_config("SCRIPT_TIMEOUT", old_script_timeout)
+            _restore_config("BIN_SCRIPT_MAP", old_script_map)
+
+
 def _assert_invalid_command() -> None:
     try:
         ros_control.execute_command(
             {
                 "action": "bad_action",
-                "target_bin": "bin_c",
+                "target_bin": "bin_b",
                 "pick_zone": "left",
             }
         )
@@ -180,7 +222,7 @@ def _mock_ai_server_result() -> dict:
     return {
         "schema_version": "1.0",
         "label": "plastic",
-        "bin": "bin_c",
+        "bin": "bin_b",
         "message": "已產生塑膠分類控制指令",
         "confidence": 0.91,
         "image_size": {
@@ -204,7 +246,7 @@ def _mock_ai_server_result() -> dict:
         "workspace": None,
         "command": {
             "action": "pick_and_place",
-            "target_bin": "bin_c",
+            "target_bin": "bin_b",
             "pick_zone": "left",
         },
     }

@@ -31,15 +31,15 @@
 
 支援 label：
 
-- `tissue`
-- `foil_pack`
+- `metal`
 - `plastic`
+- `paper`
 
 bin 對應：
 
-- `tissue` -> `bin_a`
-- `foil_pack` -> `bin_b`
-- `plastic` -> `bin_c`
+- `metal` -> `bin_a`
+- `plastic` -> `bin_b`
+- `paper` -> `bin_c`
 
 AGX 檔案結構：
 
@@ -72,7 +72,7 @@ AGX `POST /detect` 應回傳：
 - `workspace`
 - `command`
 
-Raspberry Pi 收到 `command` 後，才呼叫自己的 ROS 節點控制機械手臂。
+Raspberry Pi 收到 `command` 後，才呼叫自己的 ROS 節點或設定檔指定的本機腳本控制機械手臂。
 
 ## Raspberry Pi mock 合約
 
@@ -98,10 +98,10 @@ Raspberry Pi 收到 `command` 後，才呼叫自己的 ROS 節點控制機械手
 - Raspberry Pi 設定範例只放在 `raspberry-pi/config.example.py`。
 - AGX 與 Raspberry Pi 所有可設定值都必須從各自的 `config.py` 讀取。
 - 嚴格遵守 `README.md` 裡的 API 合約。
-- 目前 class labels 是 `tissue`、`foil_pack`、`plastic`。
+- 目前 class labels 是 `metal`、`plastic`、`paper`。
 - `ValueError` 回傳 HTTP 422。
 - 其他例外回傳 HTTP 500。
 - AGX 不要主動呼叫 Raspberry Pi `/move`。
 - AGX 只產生控制指令並回傳給 Raspberry Pi。
-- Raspberry Pi mock 模式可以驗證流程，但不得假裝已完成真實 Camera、ROS 或機械手臂整合。
+- Raspberry Pi mock 模式可以驗證流程，但不得假裝已完成真實 Camera、ROS 或機械手臂整合；若使用 `ROS_MODE = "script"`，只能執行設定檔明確指定的本機腳本。
 - `smoke_test.py` 只作為開發驗證入口，不是 runtime 流程；正式執行入口仍是各模組的 `server.py` 或 `run_once.py`。

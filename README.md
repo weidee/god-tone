@@ -7,18 +7,17 @@ AGX 模組放在 `agx/` 目錄。若暫時使用一般電腦執行推論服務�
 目前專案採用三個模組分工，避免過度拆層：
 
 ```text
-ESP32 觸發任務
-  -> Raspberry Pi / ArmPi-FPV 接收觸發
-  -> Raspberry Pi 拍照
-  -> Raspberry Pi 將圖片上傳到 AGX /detect
-  -> AGX 執行 YOLOv8 推論
-  -> AGX 取得類別、邊界框、信心值、中心座標
+ESP32 / 音箱偵測到 ON
+  -> 傳觸發訊號給電腦或 Raspberry Pi
+  -> 電腦呼叫機械手臂上方鏡頭拍照，或等待 Raspberry Pi 拍照後上傳
+  -> AGX / 電腦執行 YOLOv8 推論
+  -> YOLO 輸出 metal / plastic / paper、邊界框、信心值、中心座標
   -> AGX 依照類別對應 target_bin
   -> AGX 依照中心座標產生 pick_zone 或 workspace_candidate
   -> AGX 產生 high-level command
   -> AGX 將 command 回傳給 Raspberry Pi
   -> Raspberry Pi 驗證 command
-  -> Raspberry Pi 將 command 轉成 ArmPi-FPV motion_plan
+  -> Raspberry Pi 將 command 轉成 ArmPi-FPV motion_plan，或依設定執行指定腳本
   -> Raspberry Pi 呼叫 ROS / ArmPi Python 控制機械手臂
   -> Raspberry Pi 回到等待下一次觸發
 ```
@@ -64,9 +63,9 @@ ESP32 觸發任務
 
 | 模組 | 硬體 | 職責 | 狀態 |
 | --- | --- | --- | --- |
-| `esp32/` | ESP32、按鈕、麥克風或喇叭 | 觸發系統開始任務，細節由 ESP32 組員決定 | 尚未實作 |
-| `raspberry-pi/` | Raspberry Pi、Camera、ROS、ArmPi-FPV | 拍照、呼叫 AGX `/detect`、接收 high-level command、產生 motion_plan、呼叫 ROS / ArmPi 控制機械手臂 | Mock MVP 已實作 |
-| `agx/` | NVIDIA AGX | Flask API、YOLO 推論、類別/bin 決策、`pick_zone` 或 `workspace_candidate` 產生、高階任務指令產生 | 已可使用訓練模型推論 |
+| `esp32/` | ESP32、按鈕、麥克風或喇叭 | 偵測 ON 並觸發系統開始任務，細節由 ESP32 組員決定 | 尚未實作 |
+| `raspberry-pi/` | Raspberry Pi、Camera、ROS、ArmPi-FPV | 拍照、呼叫 AGX `/detect`、接收 high-level command、產生 motion_plan、可依設定執行指定腳本、呼叫 ROS / ArmPi 控制機械手臂 | Mock MVP 已實作 |
+| `agx/` | NVIDIA AGX 或一般電腦 | Flask API、YOLO 推論、metal/plastic/paper 類別與 bin 決策、`pick_zone` 或 `workspace_candidate` 產生、高階任務指令產生 | 已可使用訓練模型推論 |
 | `datasets/` | 本機資料夾 | 訓練 notebook、訓練權重與標註資料 | 已放入訓練成果 |
 
 ## 目前實作狀態
@@ -76,7 +75,7 @@ ESP32 觸發任務
 - `agx/` AGX 模組支援 `YOLO_INFER_MODE = "mock"` 與 `YOLO_INFER_MODE = "yolo"`，目前範例設定指向已訓練權重 `datasets/best.pt`。
 - `raspberry-pi/` 支援 `CAMERA_MODE = "mock"` 與 `CAMERA_MODE = "file"`。
 - `raspberry-pi/` 支援 `AGX_MODE = "mock"` 與 `AGX_MODE = "http"`。
-- Raspberry Pi 端會驗證 AGX 回傳的 high-level `command`，再把 `pick_zone` 轉成固定夾取點並產生 `motion_plan`。
+- Raspberry Pi 端會驗證 AGX 回傳的 high-level `command`，再把 `pick_zone` 轉成固定夾取點並產生 `motion_plan`；若設定 `ROS_MODE = "script"`，可依 `target_bin` 執行指定腳本。
 - `smoke_test.py` 只作為開發驗證入口，不是 runtime 流程；正式執行入口是各模組的 `server.py` 或 `run_once.py`。
 
 尚未完成、需等硬體或模型確認後實作：
@@ -116,9 +115,11 @@ ESP32 觸發任務
 
 | 垃圾 | Label | Bin | 回傳訊息 |
 | --- | --- | --- | --- |
-| 衛生紙 | `tissue` | `bin_a` | `已產生衛生紙分類控制指令` |
-| 鋁箔包 | `foil_pack` | `bin_b` | `已產生鋁箔包分類控制指令` |
-| 塑膠 | `plastic` | `bin_c` | `已產生塑膠分類控制指令` |
+| 金屬 | `metal` | `bin_a` | `已產生金屬分類控制指令` |
+| 塑膠 | `plastic` | `bin_b` | `已產生塑膠分類控制指令` |
+| 紙類 | `paper` | `bin_c` | `已產生紙類分類控制指令` |
+
+YOLO 權重輸出的 class name 必須與 `metal`、`plastic`、`paper` 完全一致；若使用舊 label 權重，AGX 會依合約回傳 422。
 
 ## API 合約
 
@@ -144,7 +145,7 @@ ESP32 觸發任務
 {
   "schema_version": "1.0",
   "label": "plastic",
-  "bin": "bin_c",
+  "bin": "bin_b",
   "message": "已產生塑膠分類控制指令",
   "confidence": 0.91,
   "image_size": {
@@ -168,7 +169,7 @@ ESP32 觸發任務
   "workspace": null,
   "command": {
     "action": "pick_and_place",
-    "target_bin": "bin_c",
+    "target_bin": "bin_b",
     "pick_zone": "left"
   }
 }
@@ -186,7 +187,7 @@ ESP32 觸發任務
 
 AGX 不直接呼叫 ROS，也不直接控制機械手臂。Raspberry Pi 收到 AGX 回傳的 `command` 後，負責把 `pick_zone` 轉成 ArmPi-FPV 固定夾取點，再呼叫自己的 ROS 節點或 ArmPi Python 控制程式。
 
-Raspberry Pi 端可以依照自己的 ROS service/action/topic 設計轉換 `motion_plan`。AGX 只保證回傳 JSON high-level command，不假設 Raspberry Pi 內部 ROS 實作。
+Raspberry Pi 端可以依照自己的 ROS service/action/topic 設計轉換 `motion_plan`。如果現階段要直接跑既有 ArmPi Python 腳本，設定 `ROS_MODE = "script"`，並用 `BIN_SCRIPT_MAP` 把 `bin_a`、`bin_b`、`bin_c` 對到本機腳本檔。AGX 只保證回傳 JSON high-level command，不假設 Raspberry Pi 內部 ROS 或腳本檔名。
 
 ### Raspberry Pi `POST /trigger`
 
@@ -209,10 +210,10 @@ POST /trigger
   "status": "done",
   "agx": {
     "label": "plastic",
-    "bin": "bin_c",
+    "bin": "bin_b",
     "command": {
       "action": "pick_and_place",
-      "target_bin": "bin_c",
+      "target_bin": "bin_b",
       "pick_zone": "left"
     }
   },
@@ -224,11 +225,16 @@ POST /trigger
       {"step": "move_to_pick", "x": 0.18, "y": 0.08, "z": 0.02},
       {"step": "close_gripper"},
       {"step": "lift", "x": 0.18, "y": 0.08, "z": 0.12},
-      {"step": "move_above_bin", "target_bin": "bin_c", "x": 0.30, "y": -0.16, "z": 0.12},
-      {"step": "move_to_bin", "target_bin": "bin_c", "x": 0.30, "y": -0.16, "z": 0.05},
+      {"step": "move_above_bin", "target_bin": "bin_b", "x": 0.32, "y": 0.00, "z": 0.12},
+      {"step": "move_to_bin", "target_bin": "bin_b", "x": 0.32, "y": 0.00, "z": 0.05},
       {"step": "open_gripper"},
       {"step": "return_home", "x": 0.0, "y": 0.0, "z": 0.15}
-    ]
+    ],
+    "script": {
+      "target_bin": "bin_b",
+      "name": "plastic_10_10.py",
+      "path": "/path/to/raspberry-pi/api/srcipts/plastic_10_10.py"
+    }
   }
 }
 ```
@@ -284,18 +290,18 @@ FLASK_PORT = 8000
 
 SCHEMA_VERSION = "1.0"
 
-CLASS_NAMES = ["tissue", "foil_pack", "plastic"]
+CLASS_NAMES = ["metal", "plastic", "paper"]
 
 BIN_MAP = {
-    "tissue": "bin_a",
-    "foil_pack": "bin_b",
-    "plastic": "bin_c",
+    "metal": "bin_a",
+    "plastic": "bin_b",
+    "paper": "bin_c",
 }
 
 MESSAGE_MAP = {
-    "tissue": "已產生衛生紙分類控制指令",
-    "foil_pack": "已產生鋁箔包分類控制指令",
+    "metal": "已產生金屬分類控制指令",
     "plastic": "已產生塑膠分類控制指令",
+    "paper": "已產生紙類分類控制指令",
 }
 
 WORKSPACE_Z = 0.02
