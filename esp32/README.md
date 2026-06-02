@@ -1,6 +1,6 @@
 # ESP32 整合說明
 
-這個資料夾是 ESP32 端程式。依照目前專題邊界，ESP32 只負責偵測觸發訊號；Raspberry Pi 才負責拍照、呼叫 AGX `/detect`，以及依 AGX 回傳的 `command` 控制 ROS 或本機腳本。
+這個資料夾是 ESP32 端程式。依照目前專題邊界，ESP32 只負責偵測觸發訊號；Raspberry Pi 才負責拍照、呼叫 AI Server `/detect`，以及依 AI Server 回傳的 `command` 控制 ROS 或本機腳本。
 
 ## 目前程式狀態
 
@@ -54,8 +54,8 @@ ESP32 Serial prints "ON"
   -> Serial reader receives ON
   -> call Raspberry Pi POST /trigger
   -> Raspberry Pi captures image
-  -> Raspberry Pi calls AGX POST /detect
+  -> Raspberry Pi calls AI Server POST /detect
   -> Raspberry Pi executes returned command
 ```
 
-ESP32 不直接呼叫 AGX，也不直接控制 ROS 或機械手臂。`OFF` 目前只保留給未來停止、取消或測試用途，還不是主系統 API 合約的一部分。
+ESP32 不直接呼叫 AI Server，也不直接控制 ROS 或機械手臂。`OFF` 目前只保留給未來停止、取消或測試用途，還不是主系統 API 合約的一部分。
