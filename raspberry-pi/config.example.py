@@ -1,6 +1,10 @@
-AGX_URL = "http://192.168.x.x:8000"
-AGX_MODE = "mock"
-EXPECTED_AGX_SCHEMA_VERSION = "1.0"
+AI_SERVER_URL = "http://192.168.x.x:8000"
+AI_SERVER_MODE = "mock"
+EXPECTED_AI_SERVER_SCHEMA_VERSION = "1.0"
+
+AGX_URL = AI_SERVER_URL
+AGX_MODE = AI_SERVER_MODE
+EXPECTED_AGX_SCHEMA_VERSION = EXPECTED_AI_SERVER_SCHEMA_VERSION
 
 FLASK_HOST = "0.0.0.0"
 FLASK_PORT = 5000
@@ -52,7 +56,7 @@ WORKSPACE_LIMITS = {
     "z": {"min": 0.00, "max": 0.20},
 }
 
-MOCK_AGX_RESULT = {
+MOCK_AI_SERVER_RESULT = {
     "schema_version": "1.0",
     "label": "plastic",
     "bin": "bin_c",
@@ -83,3 +87,5 @@ MOCK_AGX_RESULT = {
         "pick_zone": "left",
     },
 }
+
+MOCK_AGX_RESULT = MOCK_AI_SERVER_RESULT

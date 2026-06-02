@@ -1,6 +1,6 @@
 # Raspberry Pi 控制端
 
-`raspberry-pi/` 負責接收 ESP32 觸發、擷取 Camera 影像、呼叫 AGX `/detect`、驗證 AGX 回傳的 high-level `command`、產生 ArmPi-FPV motion plan，並呼叫 ROS / ArmPi Python 控制機械手臂。
+`raspberry-pi/` 負責接收 ESP32 觸發、擷取 Camera 影像、呼叫 AI Server `/detect`、驗證 AI Server 回傳的 high-level `command`、產生 ArmPi-FPV motion plan，並呼叫 ROS / ArmPi Python 控制機械手臂。
 
 完整系統流程與 API 合約請看根目錄 [README.md](../README.md)。
 
@@ -9,11 +9,11 @@
 ```text
 POST /trigger
   -> camera.capture_image()
-  -> agx_client.detect()
+  -> ai_server_client.detect()
   -> ros_control.validate_command()
   -> ros_control.build_motion_plan()
   -> ros_control.execute_command()
-  -> 回傳 AGX 結果與 ROS / ArmPi 執行狀態
+  -> 回傳 AI Server 結果與 ROS / ArmPi 執行狀態
 ```
 
 ## 檔案結構
@@ -23,7 +23,7 @@ raspberry-pi/
 ├── server.py         # Flask API
 ├── run_once.py       # 單次任務入口
 ├── camera.py         # Camera 擷取介面
-├── agx_client.py     # AGX HTTP client 與回應驗證
+├── ai_server_client.py # AI Server HTTP client 與回應驗證
 ├── ros_control.py    # command 驗證、motion plan 與執行流程
 ├── armpi_adapter.py  # ArmPi / ROS 控制轉接層
 ├── config.example.py
@@ -48,8 +48,13 @@ cp config.example.py config.py
 `config.py` 必須包含：
 
 ```python
-AGX_URL = "http://<AGX_IP>:8000"
-EXPECTED_AGX_SCHEMA_VERSION = "1.0"
+AI_SERVER_URL = "http://<AI_SERVER_IP>:8000"
+AI_SERVER_MODE = "http"
+EXPECTED_AI_SERVER_SCHEMA_VERSION = "1.0"
+
+AGX_URL = AI_SERVER_URL
+AGX_MODE = AI_SERVER_MODE
+EXPECTED_AGX_SCHEMA_VERSION = EXPECTED_AI_SERVER_SCHEMA_VERSION
 
 FLASK_HOST = "0.0.0.0"
 FLASK_PORT = 5000
@@ -99,7 +104,7 @@ WORKSPACE_LIMITS = {
 
 | 環境變數 | 內容 |
 | --- | --- |
-| `TRASH_SORTING_COMMAND_JSON` | AGX command JSON |
+| `TRASH_SORTING_COMMAND_JSON` | AI Server command JSON |
 | `TRASH_SORTING_MOTION_PLAN_JSON` | Raspberry Pi 產生的 motion plan JSON |
 
 ## 執行
@@ -130,7 +135,7 @@ python run_once.py
 
 ## Command 驗證
 
-Raspberry Pi 收到 AGX 的 `command` 後必須驗證：
+Raspberry Pi 收到 AI Server 的 `command` 後必須驗證：
 
 - `command` 是 object。
 - `action` 等於 `COMMAND_ACTION`。
@@ -167,9 +172,9 @@ move_above_pick
 
 - `server.py` 只處理 `/ping`、`/trigger` 與 HTTP 錯誤回應。
 - `camera.py` 只提供 `capture_image()`，回傳圖片 bytes。
-- `agx_client.py` 只呼叫 AGX `/detect` 並驗證 AGX 回應。
+- `ai_server_client.py` 只呼叫 AI Server `/detect` 並驗證 AI Server 回應。
 - `ros_control.py` 保留 command 驗證、motion plan 產生與執行流程。
 - `armpi_adapter.py` 是 ROS / ArmPi 控制轉接層。
-- Raspberry Pi 不執行 YOLO，不自行改寫 AGX 分類結果。
+- Raspberry Pi 不執行 YOLO，不自行改寫 AI Server 分類結果。
 - `ValueError` 回傳 HTTP `422`。
 - 其他例外回傳 HTTP `500`。

@@ -13,7 +13,7 @@ def main() -> None:
     _assert_missing_image(client)
     _assert_invalid_image(client)
 
-    print("AGX smoke test passed")
+    print("AI Server smoke test passed")
 
 
 def _assert_ping(client) -> None:

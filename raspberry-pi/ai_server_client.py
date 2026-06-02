@@ -42,12 +42,12 @@ def detect(image_bytes: bytes) -> dict:
 
 def validate_result(payload: dict) -> dict:
     if not isinstance(payload, dict):
-        raise ValueError("AGX response must be an object")
+        raise ValueError("AI Server response must be an object")
 
     schema_version = payload.get("schema_version")
     expected_schema = getattr(config, "EXPECTED_AGX_SCHEMA_VERSION", "1.0")
     if schema_version != expected_schema:
-        raise ValueError(f"unsupported AGX schema_version: {schema_version}")
+        raise ValueError(f"unsupported AI Server schema_version: {schema_version}")
 
     command = payload.get("command")
     if command is None:
@@ -72,84 +72,88 @@ def _error_message(response: requests.Response) -> str:
 
 
 def _mock_detect() -> dict:
-    return deepcopy(getattr(config, "MOCK_AGX_RESULT", _DEFAULT_MOCK_AGX_RESULT))
+    return deepcopy(
+        getattr(config, "MOCK_AGX_RESULT", _DEFAULT_MOCK_AI_SERVER_RESULT)
+    )
 
 
 def _validate_detection_payload(payload: dict) -> None:
     label = payload.get("label")
     if not isinstance(label, str) or not label:
-        raise ValueError("AGX response label is required when command is present")
+        raise ValueError("AI Server response label is required when command is present")
 
     allowed_labels = getattr(config, "CLASS_NAMES", ["tissue", "foil_pack", "plastic"])
     if label not in allowed_labels:
-        raise ValueError(f"unsupported AGX label: {label}")
+        raise ValueError(f"unsupported AI Server label: {label}")
 
     bin_value = payload.get("bin")
     if bin_value not in config.BIN_POINTS:
-        raise ValueError(f"unsupported AGX bin: {bin_value}")
+        raise ValueError(f"unsupported AI Server bin: {bin_value}")
     expected_bin = _bin_map().get(label)
     if expected_bin != bin_value:
-        raise ValueError(f"AGX label/bin mismatch: {label} -> {bin_value}")
+        raise ValueError(f"AI Server label/bin mismatch: {label} -> {bin_value}")
 
-    confidence = _number(payload.get("confidence"), "AGX response confidence")
+    confidence = _number(payload.get("confidence"), "AI Server response confidence")
     if confidence < 0 or confidence > 1:
-        raise ValueError("AGX response confidence must be between 0 and 1")
+        raise ValueError("AI Server response confidence must be between 0 and 1")
 
     image_size = payload.get("image_size")
     if not isinstance(image_size, dict):
-        raise ValueError("AGX response image_size must be an object")
-    _positive_number(image_size.get("width"), "AGX response image_size.width")
-    _positive_number(image_size.get("height"), "AGX response image_size.height")
+        raise ValueError("AI Server response image_size must be an object")
+    _positive_number(image_size.get("width"), "AI Server response image_size.width")
+    _positive_number(image_size.get("height"), "AI Server response image_size.height")
 
     detection = payload.get("detection")
     if not isinstance(detection, dict):
-        raise ValueError("AGX response detection must be an object")
+        raise ValueError("AI Server response detection must be an object")
 
     bbox = detection.get("bbox")
     if not isinstance(bbox, dict):
-        raise ValueError("AGX response detection.bbox must be an object")
-    x1 = _number(bbox.get("x1"), "AGX response detection.bbox.x1")
-    y1 = _number(bbox.get("y1"), "AGX response detection.bbox.y1")
-    x2 = _number(bbox.get("x2"), "AGX response detection.bbox.x2")
-    y2 = _number(bbox.get("y2"), "AGX response detection.bbox.y2")
+        raise ValueError("AI Server response detection.bbox must be an object")
+    x1 = _number(bbox.get("x1"), "AI Server response detection.bbox.x1")
+    y1 = _number(bbox.get("y1"), "AI Server response detection.bbox.y1")
+    x2 = _number(bbox.get("x2"), "AI Server response detection.bbox.x2")
+    y2 = _number(bbox.get("y2"), "AI Server response detection.bbox.y2")
     if x2 <= x1 or y2 <= y1:
-        raise ValueError("AGX response detection.bbox must satisfy x1 < x2 and y1 < y2")
+        raise ValueError("AI Server response detection.bbox must satisfy x1 < x2 and y1 < y2")
 
     center = detection.get("center")
     if not isinstance(center, dict):
-        raise ValueError("AGX response detection.center must be an object")
-    _number(center.get("x"), "AGX response detection.center.x")
-    _number(center.get("y"), "AGX response detection.center.y")
+        raise ValueError("AI Server response detection.center must be an object")
+    _number(center.get("x"), "AI Server response detection.center.x")
+    _number(center.get("y"), "AI Server response detection.center.y")
 
 
 def _validate_command(command: dict, payload: dict) -> None:
     if not isinstance(command, dict):
-        raise ValueError("AGX command must be an object")
+        raise ValueError("AI Server command must be an object")
 
     action = command.get("action")
     if action != config.COMMAND_ACTION:
-        raise ValueError(f"unsupported AGX command action: {action}")
+        raise ValueError(f"unsupported AI Server command action: {action}")
 
     target_bin = command.get("target_bin")
     if target_bin not in config.BIN_POINTS:
-        raise ValueError(f"unsupported AGX command target_bin: {target_bin}")
+        raise ValueError(f"unsupported AI Server command target_bin: {target_bin}")
     if payload.get("bin") != target_bin:
-        raise ValueError("AGX response bin must match command.target_bin")
+        raise ValueError("AI Server response bin must match command.target_bin")
 
     pick_zone = command.get("pick_zone")
     workspace_candidate = command.get("workspace_candidate")
     if pick_zone is None and workspace_candidate is None:
-        raise ValueError("AGX command must include pick_zone or workspace_candidate")
+        raise ValueError("AI Server command must include pick_zone or workspace_candidate")
     if pick_zone is not None and workspace_candidate is not None:
-        raise ValueError("AGX command must not include both pick_zone and workspace_candidate")
+        raise ValueError(
+            "AI Server command must not include both pick_zone and workspace_candidate"
+        )
 
     if pick_zone is not None and pick_zone not in config.PICK_POINTS:
-        raise ValueError(f"unsupported AGX command pick_zone: {pick_zone}")
+        raise ValueError(f"unsupported AI Server command pick_zone: {pick_zone}")
     if pick_zone is not None and payload.get("pick_zone") != pick_zone:
-        raise ValueError("AGX response pick_zone must match command.pick_zone")
+        raise ValueError("AI Server response pick_zone must match command.pick_zone")
     if workspace_candidate is not None:
-        _position(workspace_candidate, "AGX command workspace_candidate")
-        _position(payload.get("workspace_candidate"), "AGX response workspace_candidate")
+        _position(workspace_candidate, "AI Server command workspace_candidate")
+        _position(payload.get("workspace_candidate"), "AI Server response workspace_candidate")
 
 
 def _agx_url() -> str:
@@ -222,7 +226,7 @@ def _number(value, name: str) -> float:
     return float(value)
 
 
-_DEFAULT_MOCK_AGX_RESULT = {
+_DEFAULT_MOCK_AI_SERVER_RESULT = {
     "schema_version": "1.0",
     "label": "plastic",
     "bin": "bin_c",

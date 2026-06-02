@@ -9,7 +9,7 @@ pnpm-debug.log*
 .env
 .env.local
 *.env
-agx/config.py
+ai-server/config.py
 esp32/config.h
 esp32/firmware/src/config.h
 raspberry-pi/config.py
@@ -37,10 +37,10 @@ wandb/
 labels.cache
 *.cache
 
-# AGX model artifacts
-agx/models/*.pt
-agx/models/*.onnx
-agx/models/*.engine
+# AI Server model artifacts
+ai-server/models/*.pt
+ai-server/models/*.onnx
+ai-server/models/*.engine
 
 # ESP32 imported repo metadata and local artifacts
 esp32/.git/

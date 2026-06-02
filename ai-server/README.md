@@ -1,8 +1,8 @@
-# AGX 模組
+# AI Server 模組
 
-`agx/` 負責接收 Raspberry Pi 上傳的圖片、執行 YOLOv8 推論、輸出偵測結果、決定分類桶，並產生 Raspberry Pi 可執行的 high-level command。
+`ai-server/` 是 AI Server 模組，負責接收 Raspberry Pi 上傳的圖片、執行 YOLOv8 推論、輸出偵測結果、決定分類桶，並產生 Raspberry Pi 可執行的 high-level command。
 
-AGX 不直接控制 ROS，也不直接操作機械手臂。Raspberry Pi 收到 AGX 回傳的 `command` 後，負責產生 motion plan 並呼叫 ROS / ArmPi 控制程式。
+AI Server 不直接控制 ROS，也不直接操作機械手臂。Raspberry Pi 收到 AI Server 回傳的 `command` 後，負責產生 motion plan 並呼叫 ROS / ArmPi 控制程式。
 
 ## 流程
 
@@ -22,7 +22,7 @@ Raspberry Pi 上傳影像
 ## 檔案結構
 
 ```text
-agx/
+ai-server/
 ├── server.py        # Flask API 與錯誤回應
 ├── yolo_infer.py    # YOLO 模型載入與推論
 ├── task_control.py  # label/bin、座標與 command 產生
@@ -43,7 +43,7 @@ YOLO 權重輸出的 class name 必須與上述 label 完全一致。
 ## 安裝
 
 ```bash
-cd agx
+cd ai-server
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -95,7 +95,7 @@ IMAGE_TO_WORKSPACE = {
 }
 ```
 
-`COORDINATE_MODE = "zone"` 時，AGX 回傳 `pick_zone`。`COORDINATE_MODE = "workspace"` 時，AGX 回傳 `workspace_candidate`。
+`COORDINATE_MODE = "zone"` 時，AI Server 回傳 `pick_zone`。`COORDINATE_MODE = "workspace"` 時，AI Server 回傳 `workspace_candidate`。
 
 ## 執行
 
@@ -125,4 +125,4 @@ curl -X POST http://localhost:8000/detect \
 - `task_control.py` 只處理 label/bin、`pick_zone` / `workspace_candidate` 與 high-level command 產生。
 - `ValueError` 回傳 HTTP `422`。
 - 其他例外回傳 HTTP `500`。
-- AGX 不呼叫 Raspberry Pi，不呼叫 ROS，不控制機械手臂。
+- AI Server 不呼叫 Raspberry Pi，不呼叫 ROS，不控制機械手臂。

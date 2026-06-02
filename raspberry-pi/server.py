@@ -1,6 +1,6 @@
 from flask import Flask, jsonify
 
-import agx_client
+import ai_server_client
 import camera
 import config
 import ros_control
@@ -27,12 +27,12 @@ def trigger():
 
 def run_once() -> dict:
     image_bytes = camera.capture_image()
-    agx_result = agx_client.detect(image_bytes)
-    ros_result = ros_control.execute_command(agx_result.get("command"))
+    ai_server_result = ai_server_client.detect(image_bytes)
+    ros_result = ros_control.execute_command(ai_server_result.get("command"))
 
     return {
         "status": "done",
-        "agx": agx_result,
+        "agx": ai_server_result,
         "ros": ros_result,
     }
 

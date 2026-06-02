@@ -5,7 +5,7 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 from threading import Thread
 
-import agx_client
+import ai_server_client
 import camera
 import config
 import ros_control
@@ -90,7 +90,7 @@ def _assert_http_detect() -> None:
         config.AGX_MODE = "http"
         config.AGX_URL = f"http://127.0.0.1:{httpd.server_port}"
 
-        result = agx_client.detect(b"mock image bytes")
+        result = ai_server_client.detect(b"mock image bytes")
 
         assert result["label"] == "plastic"
         assert result["bin"] == "bin_c"
@@ -124,7 +124,7 @@ def _assert_http_value_error() -> None:
         config.AGX_URL = f"http://127.0.0.1:{httpd.server_port}"
 
         try:
-            agx_client.detect(b"mock image bytes")
+            ai_server_client.detect(b"mock image bytes")
         except ValueError as exc:
             assert str(exc) == "image is required"
         else:
